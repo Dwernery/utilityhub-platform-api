@@ -3,11 +3,13 @@ package com.utilityhub.api.service;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import com.utilityhub.api.db.entity.Author;
+import com.utilityhub.api.db.entity.Book;
 import com.utilityhub.api.db.entity.Series;
 import com.utilityhub.api.db.repository.AuthorRepository;
 import com.utilityhub.api.db.repository.BookRepository;
 import com.utilityhub.api.db.repository.SeriesRepository;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
+import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
 
@@ -47,6 +49,24 @@ public class LibraryService {
         Series series = new Series();
         series.setName(newSeries.name());
         seriesRepository.save(series);
+    }
+
+    public void createBook(BookRequestDTO newBook) {
+        Author author = authorRepository.findByFullName(newBook.authorName())
+                .orElseThrow(() -> new RuntimeException("Author not found: " + newBook.authorName()));
+
+        Series series = seriesRepository.findByName(newBook.seriesName())
+                .orElseThrow(() -> new RuntimeException("Series not found: " + newBook.seriesName()));
+
+        Book book = new Book();
+        book.setTitle(newBook.title());
+        book.setPages(newBook.pages());
+        book.setIsbn13(newBook.isbn13());
+        book.setAuthor(author);
+        book.setSeries(series);
+        book.setStatus(Book.BookStatus.UNREAD);
+
+        bookRepository.save(book);
     }
 
 }

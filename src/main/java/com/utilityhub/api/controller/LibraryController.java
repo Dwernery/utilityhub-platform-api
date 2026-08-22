@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.utilityhub.api.db.entity.Author;
 import com.utilityhub.api.db.entity.Series;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
+import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
 import com.utilityhub.api.service.LibraryService;
@@ -37,6 +38,16 @@ public class LibraryController {
             return ResponseEntity.ok(books);
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve books: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/books")
+    public ResponseEntity<String> createBook(@Valid @RequestBody BookRequestDTO newBook) {
+        try {
+            libraryService.createBook(newBook);
+            return ResponseEntity.ok("Book created successfully");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create book: " + e.getMessage());
         }
     }
 

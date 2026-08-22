@@ -55,8 +55,11 @@ public class LibraryService {
         Author author = authorRepository.findByFullName(newBook.authorName())
                 .orElseThrow(() -> new RuntimeException("Author not found: " + newBook.authorName()));
 
-        Series series = seriesRepository.findByName(newBook.seriesName())
-                .orElseThrow(() -> new RuntimeException("Series not found: " + newBook.seriesName()));
+        Series series = null;
+        if (newBook.seriesName() != null && !newBook.seriesName().isBlank()) {
+            series = seriesRepository.findByName(newBook.seriesName())
+                    .orElseThrow(() -> new RuntimeException("Series not found: " + newBook.seriesName()));
+        }
 
         Book book = new Book();
         book.setTitle(newBook.title());

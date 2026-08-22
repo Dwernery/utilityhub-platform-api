@@ -1,0 +1,31 @@
+package com.utilityhub.api.db.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import com.utilityhub.api.db.entity.Book;
+import com.utilityhub.api.dto.response.BookResponseDTO;
+
+@Repository
+public interface BookRepository extends JpaRepository<Book, Integer> {
+    @Query("""
+                SELECT new com.utilityhub.api.dto.response.BookResponseDTO(
+                    b.title,
+                    b.pages,
+                    b.status,
+                    b.author.fullName,
+                    b.series.name,
+                    b.startDate,
+                    b.endDate,
+                    b.currentPage,
+                    b.rating
+                )
+                FROM Book b
+                LEFT JOIN b.author
+                LEFT JOIN b.series
+                ORDER BY b.author.fullName ASC, b.title ASC
+            """)
+    List<BookResponseDTO> findAllFlat();
+}

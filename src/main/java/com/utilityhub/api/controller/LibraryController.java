@@ -3,6 +3,7 @@ package com.utilityhub.api.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,6 +63,26 @@ public class LibraryController {
             return ResponseEntity.ok("Book updated successfully");
         } catch (Exception e) {
             throw new RuntimeException("Failed to update book: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/books/{id}/rating")
+    public ResponseEntity<String> editBookRating(@PathVariable String id, @RequestBody Integer newRating) {
+        try {
+            libraryService.editBookRating(id, newRating);
+            return ResponseEntity.ok("Book rating updated successfully");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update book rating: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/books/{id}")
+    public ResponseEntity<String> deleteBook(@PathVariable String id) {
+        try {
+            libraryService.deleteBook(id);
+            return ResponseEntity.ok("Book deleted successfully");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete book: " + e.getMessage());
         }
     }
 

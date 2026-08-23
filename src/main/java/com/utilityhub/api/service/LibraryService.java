@@ -98,4 +98,17 @@ public class LibraryService {
         bookRepository.save(book);
     }
 
+    public void editBookRating(String id, Integer newRating) {
+        Book book = bookRepository.findById(Integer.parseInt(id))
+                .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
+        book.setRating(newRating);
+        bookRepository.save(book);
+    }
+
+    public void deleteBook(String id) {
+        Book book = bookRepository.findById(Integer.parseInt(id))
+                .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
+        bookRepository.delete(book);
+    }
+
 }

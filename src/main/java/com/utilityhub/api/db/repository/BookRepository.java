@@ -12,6 +12,7 @@ import com.utilityhub.api.dto.response.BookResponseDTO;
 public interface BookRepository extends JpaRepository<Book, Integer> {
     @Query("""
                 SELECT new com.utilityhub.api.dto.response.BookResponseDTO(
+                    b.id,
                     b.title,
                     b.pages,
                     b.status,
@@ -20,7 +21,8 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
                     b.startDate,
                     b.endDate,
                     b.currentPage,
-                    b.rating
+                    b.rating,
+                    b.isbn13
                 )
                 FROM Book b
                 LEFT JOIN b.author

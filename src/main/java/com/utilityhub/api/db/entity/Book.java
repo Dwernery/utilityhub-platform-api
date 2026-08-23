@@ -147,7 +147,8 @@ public class Book {
 
     public enum BookStatus {
         UNREAD,
-        READ
+        READ,
+        IN_PROGRESS
     }
 
 }

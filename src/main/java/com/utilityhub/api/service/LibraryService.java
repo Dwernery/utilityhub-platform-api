@@ -9,6 +9,7 @@ import com.utilityhub.api.db.repository.AuthorRepository;
 import com.utilityhub.api.db.repository.BookRepository;
 import com.utilityhub.api.db.repository.SeriesRepository;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
+import com.utilityhub.api.dto.request.BookEditRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
@@ -68,6 +69,31 @@ public class LibraryService {
         book.setAuthor(author);
         book.setSeries(series);
         book.setStatus(Book.BookStatus.UNREAD);
+
+        bookRepository.save(book);
+    }
+
+    public void editBook(String id, BookEditRequestDTO editedBook) {
+        Book book = bookRepository.findById(Integer.parseInt(id))
+                .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
+
+        Author author = authorRepository.findByFullName(editedBook.authorName())
+                .orElseThrow(() -> new RuntimeException("Author not found: " + editedBook.authorName()));
+
+        Series series = null;
+        if (editedBook.seriesName() != null && !editedBook.seriesName().isBlank()) {
+            series = seriesRepository.findByName(editedBook.seriesName())
+                    .orElseThrow(() -> new RuntimeException("Series not found: " + editedBook.seriesName()));
+        }
+
+        book.setTitle(editedBook.title());
+        book.setPages(editedBook.pages());
+        book.setIsbn13(editedBook.isbn13());
+        book.setStatus(editedBook.status());
+        book.setStartDate(editedBook.startDate());
+        book.setEndDate(editedBook.endDate());
+        book.setAuthor(author);
+        book.setSeries(series);
 
         bookRepository.save(book);
     }

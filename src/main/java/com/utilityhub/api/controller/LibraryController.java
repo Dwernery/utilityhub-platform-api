@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.utilityhub.api.db.entity.Author;
 import com.utilityhub.api.db.entity.Series;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
+import com.utilityhub.api.dto.request.BookEditRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
@@ -19,6 +20,9 @@ import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
 
 @RestController
 @RequestMapping("/api/library")
@@ -48,6 +52,16 @@ public class LibraryController {
             return ResponseEntity.ok("Book created successfully");
         } catch (Exception e) {
             throw new RuntimeException("Failed to create book: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/books/{id}")
+    public ResponseEntity<String> editBook(@PathVariable String id, @RequestBody BookEditRequestDTO editedBook) {
+        try {
+            libraryService.editBook(id, editedBook);
+            return ResponseEntity.ok("Book updated successfully");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update book: " + e.getMessage());
         }
     }
 

@@ -13,6 +13,8 @@ import com.utilityhub.api.dto.request.BookEditRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.time.LocalDate;
 
 @Service
 public class LibraryService {
@@ -73,27 +75,85 @@ public class LibraryService {
         bookRepository.save(book);
     }
 
-    public void editBook(String id, BookEditRequestDTO editedBook) {
+    public void patchBook(String id, JsonNode payload) {
         Book book = bookRepository.findById(Integer.parseInt(id))
                 .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
 
-        Author author = authorRepository.findByFullName(editedBook.authorName())
-                .orElseThrow(() -> new RuntimeException("Author not found: " + editedBook.authorName()));
-
-        Series series = null;
-        if (editedBook.seriesName() != null && !editedBook.seriesName().isBlank()) {
-            series = seriesRepository.findByName(editedBook.seriesName())
-                    .orElseThrow(() -> new RuntimeException("Series not found: " + editedBook.seriesName()));
+        if (payload.has("title")) {
+            JsonNode n = payload.get("title");
+            book.setTitle(n.isNull() ? null : n.asText());
         }
 
-        book.setTitle(editedBook.title());
-        book.setPages(editedBook.pages());
-        book.setIsbn13(editedBook.isbn13());
-        book.setStatus(editedBook.status());
-        book.setStartDate(editedBook.startDate());
-        book.setEndDate(editedBook.endDate());
-        book.setAuthor(author);
-        book.setSeries(series);
+        if (payload.has("pages")) {
+            JsonNode n = payload.get("pages");
+            book.setPages(n.isNull() ? null : n.asInt());
+        }
+
+        if (payload.has("isbn13")) {
+            JsonNode n = payload.get("isbn13");
+            book.setIsbn13(n.isNull() ? null : n.asText());
+        }
+
+        if (payload.has("status")) {
+            JsonNode n = payload.get("status");
+            if (n.isNull()) {
+                book.setStatus(null);
+            } else {
+                try {
+                    book.setStatus(Book.BookStatus.valueOf(n.asText().toUpperCase()));
+                } catch (IllegalArgumentException ex) {
+                    throw new RuntimeException("Invalid status value: " + n.asText());
+                }
+            }
+        }
+
+        if (payload.has("startDate")) {
+            JsonNode n = payload.get("startDate");
+            book.setStartDate(n.isNull() ? null : LocalDate.parse(n.asText()));
+        }
+
+        if (payload.has("endDate")) {
+            JsonNode n = payload.get("endDate");
+            book.setEndDate(n.isNull() ? null : LocalDate.parse(n.asText()));
+        }
+
+        if (payload.has("authorName")) {
+            JsonNode n = payload.get("authorName");
+            if (n.isNull()) {
+                book.setAuthor(null);
+            } else {
+                String name = n.asText();
+                Author author = authorRepository.findByFullName(name)
+                        .orElseThrow(() -> new RuntimeException("Author not found: " + name));
+                book.setAuthor(author);
+            }
+        }
+
+        if (payload.has("seriesName")) {
+            JsonNode n = payload.get("seriesName");
+            if (n.isNull()) {
+                book.setSeries(null);
+            } else {
+                String sname = n.asText();
+                if (!sname.isBlank()) {
+                    Series series = seriesRepository.findByName(sname)
+                            .orElseThrow(() -> new RuntimeException("Series not found: " + sname));
+                    book.setSeries(series);
+                } else {
+                    book.setSeries(null);
+                }
+            }
+        }
+
+        if (payload.has("currentPage")) {
+            JsonNode n = payload.get("currentPage");
+            book.setCurrentPage(n.isNull() ? null : n.asInt());
+        }
+
+        if (payload.has("rating")) {
+            JsonNode n = payload.get("rating");
+            book.setRating(n.isNull() ? null : n.asInt());
+        }
 
         bookRepository.save(book);
     }

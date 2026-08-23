@@ -10,20 +10,24 @@ import org.springframework.web.bind.annotation.RestController;
 import com.utilityhub.api.db.entity.Author;
 import com.utilityhub.api.db.entity.Series;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
-import com.utilityhub.api.dto.request.BookEditRequestDTO;
+// BookEditRequestDTO removed; PATCH endpoint uses JsonNode for partial updates
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.BookResponseDTO;
 import com.utilityhub.api.service.LibraryService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
+// Removed PutMapping: rating updates are handled via PATCH now
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-
 
 @RestController
 @RequestMapping("/api/library")
@@ -31,6 +35,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class LibraryController {
 
     private LibraryService libraryService;
+    private ObjectMapper objectMapper;
 
     public LibraryController(LibraryService libraryService) {
         this.libraryService = libraryService;
@@ -56,23 +61,39 @@ public class LibraryController {
         }
     }
 
-    @PutMapping("/books/{id}")
-    public ResponseEntity<String> editBook(@PathVariable String id, @RequestBody BookEditRequestDTO editedBook) {
+    @PatchMapping("/books/{id}")
+    public ResponseEntity<String> editBook(@PathVariable String id, @RequestBody(required = false) String rawBody) {
         try {
-            libraryService.editBook(id, editedBook);
+            if (rawBody == null || rawBody.isBlank()) {
+                throw new RuntimeException("Empty request body");
+            }
+
+            if (this.objectMapper == null) {
+                this.objectMapper = new ObjectMapper();
+            }
+
+            JsonNode payload;
+            try {
+                payload = objectMapper.readTree(rawBody);
+            } catch (IOException ex) {
+                throw new RuntimeException("Invalid JSON body: " + ex.getMessage());
+            }
+
+            // If client sent a bare number (e.g. 3), normalize to { "rating": 3 }
+            if (payload.isNumber()) {
+                ObjectNode node = objectMapper.createObjectNode();
+                node.set("rating", payload);
+                payload = node;
+            }
+
+            if (!payload.isObject()) {
+                throw new RuntimeException("Expected a JSON object payload");
+            }
+
+            libraryService.patchBook(id, payload);
             return ResponseEntity.ok("Book updated successfully");
         } catch (Exception e) {
             throw new RuntimeException("Failed to update book: " + e.getMessage());
-        }
-    }
-
-    @PutMapping("/books/{id}/rating")
-    public ResponseEntity<String> editBookRating(@PathVariable String id, @RequestBody Integer newRating) {
-        try {
-            libraryService.editBookRating(id, newRating);
-            return ResponseEntity.ok("Book rating updated successfully");
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update book rating: " + e.getMessage());
         }
     }
 

@@ -1,4 +1,4 @@
-package com.utilityhub.api.db.entity;
+package com.utilityhub.api.db.entity.library;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

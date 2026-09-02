@@ -1,7 +1,8 @@
-package com.utilityhub.api.dto.response;
+package com.utilityhub.api.dto.response.library;
 
 import java.time.LocalDate;
-import com.utilityhub.api.db.entity.Book.BookStatus;
+
+import com.utilityhub.api.db.entity.library.Book.BookStatus;
 
 public record BookResponseDTO(
         Integer id,

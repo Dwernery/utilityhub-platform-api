@@ -1,6 +1,7 @@
-package com.utilityhub.api.db.entity;
+package com.utilityhub.api.db.entity.library;
 
 import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

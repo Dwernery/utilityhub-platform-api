@@ -1,7 +1,8 @@
 package com.utilityhub.api.dto.request;
 
 import java.time.LocalDate;
-import com.utilityhub.api.db.entity.Book.BookStatus;
+
+import com.utilityhub.api.db.entity.library.Book.BookStatus;
 
 public record BookEditRequestDTO(
         String title,

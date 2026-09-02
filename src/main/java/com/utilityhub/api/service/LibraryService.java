@@ -2,17 +2,18 @@ package com.utilityhub.api.service;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
-import com.utilityhub.api.db.entity.Author;
-import com.utilityhub.api.db.entity.Book;
-import com.utilityhub.api.db.entity.Series;
-import com.utilityhub.api.db.repository.AuthorRepository;
-import com.utilityhub.api.db.repository.BookRepository;
-import com.utilityhub.api.db.repository.SeriesRepository;
+
+import com.utilityhub.api.db.entity.library.Author;
+import com.utilityhub.api.db.entity.library.Book;
+import com.utilityhub.api.db.entity.library.Series;
+import com.utilityhub.api.db.repository.library.AuthorRepository;
+import com.utilityhub.api.db.repository.library.BookRepository;
+import com.utilityhub.api.db.repository.library.SeriesRepository;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
 import com.utilityhub.api.dto.request.BookEditRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
-import com.utilityhub.api.dto.response.BookResponseDTO;
+import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDate;
 

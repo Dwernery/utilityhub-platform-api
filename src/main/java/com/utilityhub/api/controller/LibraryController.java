@@ -7,13 +7,14 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.utilityhub.api.db.entity.Author;
-import com.utilityhub.api.db.entity.Series;
+
+import com.utilityhub.api.db.entity.library.Author;
+import com.utilityhub.api.db.entity.library.Series;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
 // BookEditRequestDTO removed; PATCH endpoint uses JsonNode for partial updates
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
-import com.utilityhub.api.dto.response.BookResponseDTO;
+import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.utilityhub.api.service.LibraryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;

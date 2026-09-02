@@ -7,34 +7,11 @@
 
 -- Phase 5 TV Shows
 INSERT INTO shows (title, year, phase_id, status, runtime, synopsis, s3_url) VALUES
-('Agatha All Along', 2024, 5, 'UNWATCHED', NULL, NULL, NULL),
 ('Your Friendly Neighborhood Spider-Man', 2025, 5, 'UNWATCHED', NULL, NULL, NULL),
 ('Daredevil: Born Again', 2025, 5, 'UNWATCHED', NULL, NULL, NULL),
 ('Ironheart', 2025, 5, 'UNWATCHED', NULL, NULL, NULL);
 
--- Phase 5 TV Show Episodes
 
--- Agatha All Along (9 episodes)
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 1, 'Seekest Thou the Road', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 2, 'Circle Sewn With Fate, Unlock Thy Hidden Gate', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 3, 'Through Many Miles, Of Tricks and Trials', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 4, 'If I Can''t Reach You Let My Song Teach You', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 5, 'Darkest Hour, Wake Thy Power', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 6, 'Familiar by Thy Side', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 7, 'Death''s Hand in Mine', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 8, 'Follow Me My Friend, To Glory at the End', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'Agatha All Along' LIMIT 1), 9, 'Maiden Mother Crone', 'UNWATCHED'),
--- What If...? Season 3 (10 episodes)
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 1, 'Episode 1', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 2, 'Episode 2', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 3, 'Episode 3', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 4, 'Episode 4', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 5, 'Episode 5', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 6, 'Episode 6', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 7, 'Episode 7', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 8, 'Episode 8', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 9, 'Episode 9', 'UNWATCHED'),
-((SELECT id FROM shows WHERE title = 'What If...?' AND year = 2024 LIMIT 1), 10, 'Episode 10', 'UNWATCHED'),
 -- Your Friendly Neighborhood Spider-Man (10 episodes)
 ((SELECT id FROM shows WHERE title = 'Your Friendly Neighborhood Spider-Man' LIMIT 1), 1, 'Episode 1', 'UNWATCHED'),
 ((SELECT id FROM shows WHERE title = 'Your Friendly Neighborhood Spider-Man' LIMIT 1), 2, 'Episode 2', 'UNWATCHED'),

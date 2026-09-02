@@ -80,14 +80,10 @@ public class MCUService {
                             .map(this::convertMovieToDTO)
                             .collect(Collectors.toList());
 
-                    // Build show DTOs by grouping seasons
-                    Map<String, List<Show>> groupedShows = showsByDomain.getOrDefault(domain, List.of())
+                    // Build show DTOs - each Show record is one season per show
+                    List<ShowResponseDTO> showDTOs = showsByDomain.getOrDefault(domain, List.of())
                             .stream()
-                            .collect(Collectors.groupingBy(Show::getTitle, java.util.LinkedHashMap::new,
-                                    Collectors.toList()));
-
-                    List<ShowResponseDTO> showDTOs = groupedShows.entrySet().stream()
-                            .map(entry -> convertShowToDTO(entry.getValue()))
+                            .map(this::convertShowToDTO)
                             .collect(Collectors.toList());
 
                     return new DomainDTO(domain, movieDTOs, showDTOs);
@@ -112,35 +108,26 @@ public class MCUService {
         return dto;
     }
 
-    private ShowResponseDTO convertShowToDTO(List<Show> showSeasons) {
-        // showSeasons contains all Show records for the same show title
-        // Each Show record represents a season
+    private ShowResponseDTO convertShowToDTO(Show show) {
+        // Each Show record represents one season
         ShowResponseDTO dto = new ShowResponseDTO();
 
-        // Use the first season record as the base (same title, domain, synopsis, etc.)
-        Show baseShow = showSeasons.get(0);
-        dto.setGlobalId("show:" + baseShow.getId());
-        dto.setTitle(baseShow.getTitle());
-        dto.setPremiereDate(baseShow.getPremiereDate());
-        dto.setSynopsis(baseShow.getSynopsis());
-        dto.setS3Url(baseShow.getS3Url());
+        dto.setGlobalId("show:" + show.getId());
+        dto.setTitle(show.getTitle());
+        dto.setPremiereDate(show.getPremiereDate());
+        dto.setSynopsis(show.getSynopsis());
+        dto.setS3Url(show.getS3Url());
 
-        // Sort seasons by season number
-        List<SeasonResponseDTO> seasons = showSeasons.stream()
-                .sorted(Comparator.comparingInt(Show::getSeason))
-                .map(show -> {
-                    // Fetch episodes for this specific season
-                    List<EpisodeResponseDTO> episodes = episodeRepository.findByShowId(show.getId())
-                            .stream()
-                            .map(this::convertEpisodeToDTO)
-                            .sorted(Comparator.comparingInt(EpisodeResponseDTO::getEpisodeNumber))
-                            .collect(Collectors.toList());
-
-                    return new SeasonResponseDTO(show.getSeason(), episodes);
-                })
+        // Fetch episodes for this specific season
+        List<EpisodeResponseDTO> episodes = episodeRepository.findByShowId(show.getId())
+                .stream()
+                .map(this::convertEpisodeToDTO)
+                .sorted(Comparator.comparingInt(EpisodeResponseDTO::getEpisodeNumber))
                 .collect(Collectors.toList());
 
-        dto.setSeasons(seasons);
+        // Return only one season per show
+        SeasonResponseDTO season = new SeasonResponseDTO(show.getSeason(), episodes);
+        dto.setSeasons(List.of(season));
         return dto;
     }
 

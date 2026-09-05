@@ -45,7 +45,7 @@ public class Book {
     private String isbn13;
 
     @Column(name = "s3_url")
-    private String s3URL;
+    private String s3Url;
 
     @Column(name = "rating")
     private Integer rating;
@@ -122,12 +122,12 @@ public class Book {
         this.isbn13 = isbn13;
     }
 
-    public String getS3URL() {
-        return this.s3URL;
+    public String getS3Url() {
+        return this.s3Url;
     }
 
-    public void setS3URL(String s3URL) {
-        this.s3URL = s3URL;
+    public void setS3Url(String s3Url) {
+        this.s3Url = s3Url;
     }
 
     public Author getAuthor() {

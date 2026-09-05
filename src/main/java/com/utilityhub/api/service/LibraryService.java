@@ -10,7 +10,6 @@ import com.utilityhub.api.db.repository.library.AuthorRepository;
 import com.utilityhub.api.db.repository.library.BookRepository;
 import com.utilityhub.api.db.repository.library.SeriesRepository;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
-import com.utilityhub.api.dto.request.BookEditRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;

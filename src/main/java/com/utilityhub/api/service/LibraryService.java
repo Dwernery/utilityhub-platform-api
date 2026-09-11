@@ -9,6 +9,7 @@ import com.utilityhub.api.db.entity.library.Series;
 import com.utilityhub.api.db.repository.library.AuthorRepository;
 import com.utilityhub.api.db.repository.library.BookRepository;
 import com.utilityhub.api.db.repository.library.SeriesRepository;
+import com.utilityhub.api.dto.request.AttachFileRequestDTO;
 import com.utilityhub.api.dto.request.AuthorRequestDTO;
 import com.utilityhub.api.dto.request.BookRequestDTO;
 import com.utilityhub.api.dto.request.SeriesRequestDTO;
@@ -22,12 +23,14 @@ public class LibraryService {
     private BookRepository bookRepository;
     private AuthorRepository authorRepository;
     private SeriesRepository seriesRepository;
+    private S3Service s3Service;
 
     public LibraryService(BookRepository bookRepository, AuthorRepository authorRepository,
-            SeriesRepository seriesRepository) {
+            SeriesRepository seriesRepository, S3Service s3Service) {
         this.bookRepository = bookRepository;
         this.authorRepository = authorRepository;
         this.seriesRepository = seriesRepository;
+        this.s3Service = s3Service;
     }
 
     public List<BookResponseDTO> findAllBooks() {
@@ -169,6 +172,21 @@ public class LibraryService {
         Book book = bookRepository.findById(Integer.parseInt(id))
                 .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
         bookRepository.delete(book);
+    }
+
+    public S3Service.S3PresignedUrlResponse generatePresignedUploadUrl(String fileName, String fileType) {
+        return s3Service.generatePresignedUploadUrl(fileName, fileType);
+    }
+
+    public String attachFileToBook(Integer bookId, AttachFileRequestDTO request) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Book not found with id: " + bookId));
+
+        String s3Url = s3Service.getPublicS3Url(request.s3Key());
+        book.setS3Url(s3Url);
+        bookRepository.save(book);
+
+        return s3Url;
     }
 
 }

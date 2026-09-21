@@ -3,16 +3,27 @@ package com.utilityhub.api.dto.response.finance;
 import java.math.BigDecimal;
 
 public class AccountBalanceDTO {
+    private Integer accountId;
     private String accountName;
     private String accountType;
     private String category;
     private BigDecimal balance;
 
-    public AccountBalanceDTO(String accountName, String accountType, String category, BigDecimal balance) {
+    public AccountBalanceDTO(Integer accountId, String accountName, String accountType, String category,
+            BigDecimal balance) {
+        this.accountId = accountId;
         this.accountName = accountName;
         this.accountType = accountType;
         this.category = category;
         this.balance = balance;
+    }
+
+    public Integer getAccountId() {
+        return this.accountId;
+    }
+
+    public void setAccountId(Integer accountId) {
+        this.accountId = accountId;
     }
 
     public String getAccountName() {

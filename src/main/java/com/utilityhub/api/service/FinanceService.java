@@ -16,17 +16,22 @@ import com.utilityhub.api.db.repository.finance.NetWorthSnapshotRepository;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountBalanceDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
+import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
+import com.utilityhub.api.db.repository.finance.TransactionRepository;
 
 @Service
 public class FinanceService {
         private static final Logger logger = LoggerFactory.getLogger(FinanceService.class);
         private final NetWorthSnapshotRepository netWorthSnapshotRepository;
         private final AccountMonthlyBalanceRepository accountMonthlyBalanceRepository;
+        private final TransactionRepository transactionRepository;
 
         public FinanceService(NetWorthSnapshotRepository netWorthSnapshotRepository,
-                        AccountMonthlyBalanceRepository accountMonthlyBalanceRepository) {
+                        AccountMonthlyBalanceRepository accountMonthlyBalanceRepository,
+                        TransactionRepository transactionRepository) {
                 this.netWorthSnapshotRepository = netWorthSnapshotRepository;
                 this.accountMonthlyBalanceRepository = accountMonthlyBalanceRepository;
+                this.transactionRepository = transactionRepository;
         }
 
         public List<NetWorthHistoryResponseDTO> getCompleteNetWorthHistory() {
@@ -118,5 +123,19 @@ public class FinanceService {
                 accountMonthlyBalanceRepository.save(accountMonthlyBalance);
 
                 logger.info("Account balance updated successfully for accountId={}", request.accountId());
+        }
+
+        public List<TransactionResponseDTO> getAllTransactions() {
+                return transactionRepository.findAll()
+                                .stream()
+                                .map(transaction -> new TransactionResponseDTO(
+                                                transaction.getId(),
+                                                transaction.getName(),
+                                                transaction.getTransactionType(),
+                                                transaction.getAmount(),
+                                                transaction.isPaid(),
+                                                transaction.isCash()
+                                ))
+                                .toList();
         }
 }

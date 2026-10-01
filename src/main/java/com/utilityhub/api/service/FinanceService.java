@@ -151,6 +151,7 @@ public class FinanceService {
         public List<TransactionResponseDTO> getAllTransactions() {
                 return transactionRepository.findAll()
                                 .stream()
+                                .sorted((t1, t2) -> t2.getAmount().compareTo(t1.getAmount()))
                                 .map(transaction -> new TransactionResponseDTO(
                                                 transaction.getId(),
                                                 transaction.getName(),

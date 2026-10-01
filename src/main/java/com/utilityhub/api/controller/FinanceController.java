@@ -9,10 +9,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.utilityhub.api.service.FinanceService;
+import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
+import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
+import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
 
@@ -50,6 +55,40 @@ public class FinanceController {
     @GetMapping("/transactions")
     public List<TransactionResponseDTO> getAllTransactions() {
         return financeService.getAllTransactions();
+    }
+
+    @GetMapping("/accounts")
+    public List<AccountResponseDTO> getAllAccounts() {
+        return financeService.getAllAccounts();
+    }
+
+    @PostMapping("/accounts")
+    public ResponseEntity<AccountResponseDTO> createAccount(@RequestBody AccountCreateRequestDTO request) {
+        try {
+            logger.info("Received POST request to create account: accountName={}, accountType={}, category={}",
+                    request.accountName(), request.accountType(), request.category());
+            AccountResponseDTO account = financeService.createAccount(request);
+            logger.info("Account created successfully: id={}, name={}", account.getId(), account.getAccountName());
+            return ResponseEntity.ok(account);
+        } catch (Exception e) {
+            logger.error("Error creating account: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/account-balance")
+    public ResponseEntity<String> deleteAccountBalance(@RequestBody DeleteAccountBalanceRequestDTO request) {
+        try {
+            logger.info("Received DELETE request to delete account balance: accountId={}, balanceDate={}",
+                    request.accountId(), request.balanceDate());
+            financeService.deleteAccountBalance(request);
+            logger.info("Account balance deleted successfully for accountId={}", request.accountId());
+            return ResponseEntity.ok("Account balance deleted successfully");
+        } catch (Exception e) {
+            logger.error("Error deleting account balance: accountId={}, balanceDate={}, error={}",
+                    request.accountId(), request.balanceDate(), e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
 }

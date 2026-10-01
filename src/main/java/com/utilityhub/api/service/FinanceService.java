@@ -21,6 +21,7 @@ import com.utilityhub.api.db.repository.finance.NetWorthSnapshotRepository;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
+import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountBalanceDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
@@ -241,5 +242,36 @@ public class FinanceService {
                 accountMonthlyBalanceRepository.delete(accountMonthlyBalance);
 
                 logger.info("Account balance deleted successfully for accountId={}", request.accountId());
+        }
+
+        public void editTransaction(EditTransactionRequestDTO request) {
+                logger.info("Attempting to edit transaction: id={}, name={}, amount={}, paid={}",
+                                request.id(), request.name(), request.amount(), request.paid());
+
+                com.utilityhub.api.db.entity.finance.Transaction transaction = transactionRepository
+                                .findById(request.id())
+                                .orElseThrow(() -> {
+                                        String errorMsg = "Transaction not found for id: " + request.id();
+                                        logger.error(errorMsg);
+                                        return new RuntimeException(errorMsg);
+                                });
+
+                transaction.setName(request.name());
+                transaction.setAmount(request.amount());
+                transaction.setPaid(request.paid());
+
+                transactionRepository.save(transaction);
+                logger.info("Transaction updated successfully: id={}", request.id());
+        }
+
+        public void clearAllTransactionsPaid() {
+                logger.info("Clearing all transactions - setting paid to false");
+                List<com.utilityhub.api.db.entity.finance.Transaction> allTransactions = transactionRepository
+                                .findAll();
+
+                allTransactions.forEach(transaction -> transaction.setPaid(false));
+                transactionRepository.saveAll(allTransactions);
+
+                logger.info("All transactions cleared successfully - {} transactions updated", allTransactions.size());
         }
 }

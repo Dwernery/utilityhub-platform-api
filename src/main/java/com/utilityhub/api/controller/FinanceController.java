@@ -17,6 +17,7 @@ import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
+import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
@@ -87,6 +88,35 @@ public class FinanceController {
         } catch (Exception e) {
             logger.error("Error deleting account balance: accountId={}, balanceDate={}, error={}",
                     request.accountId(), request.balanceDate(), e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/transactions")
+    public ResponseEntity<String> editTransaction(@RequestBody EditTransactionRequestDTO request) {
+        try {
+            logger.info("Received PUT request to edit transaction: id={}, name={}, amount={}, paid={}",
+                    request.id(), request.name(), request.amount(), request.paid());
+            financeService.editTransaction(request);
+            logger.info("Transaction edited successfully: id={}", request.id());
+            return ResponseEntity.ok("Transaction edited successfully");
+        } catch (Exception e) {
+            logger.error("Error editing transaction: id={}, error={}",
+                    request.id(), e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/transactions/clear-paid")
+    public ResponseEntity<String> clearAllTransactionsPaid() {
+        try {
+            logger.info("Received PUT request to clear all transactions - setting paid to false");
+            financeService.clearAllTransactionsPaid();
+            logger.info("All transactions cleared successfully");
+            return ResponseEntity.ok("All transactions cleared successfully");
+        } catch (Exception e) {
+            logger.error("Error clearing all transactions: error={}",
+                    e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

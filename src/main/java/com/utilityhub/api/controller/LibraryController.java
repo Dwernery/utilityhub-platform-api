@@ -57,10 +57,10 @@ public class LibraryController {
     }
 
     @PostMapping("/books")
-    public ResponseEntity<String> createBook(@Valid @RequestBody BookRequestDTO newBook) {
+    public ResponseEntity<BookResponseDTO> createBook(@Valid @RequestBody BookRequestDTO newBook) {
         try {
-            libraryService.createBook(newBook);
-            return ResponseEntity.ok("Book created successfully");
+            BookResponseDTO createdBook = libraryService.createBook(newBook);
+            return ResponseEntity.ok(createdBook);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create book: " + e.getMessage());
         }

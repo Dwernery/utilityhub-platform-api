@@ -57,7 +57,7 @@ public class LibraryService {
         seriesRepository.save(series);
     }
 
-    public void createBook(BookRequestDTO newBook) {
+    public BookResponseDTO createBook(BookRequestDTO newBook) {
         Author author = authorRepository.findByFullName(newBook.authorName())
                 .orElseThrow(() -> new RuntimeException("Author not found: " + newBook.authorName()));
 
@@ -75,7 +75,21 @@ public class LibraryService {
         book.setSeries(series);
         book.setStatus(Book.BookStatus.UNREAD);
 
-        bookRepository.save(book);
+        Book savedBook = bookRepository.save(book);
+
+        return new BookResponseDTO(
+                savedBook.getId(),
+                savedBook.getTitle(),
+                savedBook.getPages(),
+                savedBook.getStatus(),
+                savedBook.getAuthor().getFullName(),
+                savedBook.getSeries() != null ? savedBook.getSeries().getName() : null,
+                savedBook.getStartDate(),
+                savedBook.getEndDate(),
+                savedBook.getCurrentPage(),
+                savedBook.getRating(),
+                savedBook.getIsbn13(),
+                savedBook.getS3Url());
     }
 
     public void patchBook(String id, JsonNode payload) {

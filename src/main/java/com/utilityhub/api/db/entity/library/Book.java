@@ -152,6 +152,10 @@ public class Book {
         IN_PROGRESS
     }
 
+    public Integer getRating() {
+        return this.rating;
+    }
+
     public void setRating(Integer newRating) {
         this.rating = newRating;
     }

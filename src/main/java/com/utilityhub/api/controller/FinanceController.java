@@ -1,9 +1,11 @@
 package com.utilityhub.api.controller;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,9 +18,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
+import com.utilityhub.api.dto.request.DeleteIncomeSourceRequestDTO;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
+import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
+import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
+import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
 
@@ -117,6 +123,58 @@ public class FinanceController {
         } catch (Exception e) {
             logger.error("Error clearing all transactions: error={}",
                     e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/income-sources")
+    public List<IncomeSourceResponseDTO> getAllIncomeSources() {
+        return financeService.getAllIncomeSources();
+    }
+
+    @PostMapping("/income-sources")
+    public ResponseEntity<?> createIncomeSource(@RequestBody IncomeSourceCreateRequestDTO request) {
+        try {
+            logger.info("Received POST request to create income source: year={}, name={}, amount={}",
+                    request.year(), request.name(), request.amount());
+            IncomeSourceResponseDTO incomeSource = financeService.createIncomeSource(request);
+            logger.info("Income source created successfully: id={}", incomeSource.id());
+            return ResponseEntity.ok(incomeSource);
+        } catch (Exception e) {
+            logger.error("Error creating income source: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/income-sources")
+    public ResponseEntity<?> updateIncomeSource(@RequestBody IncomeSourceUpdateRequestDTO request) {
+        try {
+            logger.info("Received PUT request to update income source: id={}, name={}, amount={}",
+                    request.id(), request.name(), request.amount());
+            IncomeSourceResponseDTO incomeSource = financeService.updateIncomeSource(request);
+            logger.info("Income source updated successfully: id={}", incomeSource.id());
+            return ResponseEntity.ok(incomeSource);
+        } catch (NoSuchElementException e) {
+            logger.error("Income source not found: id={}, error={}", request.id(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating income source: id={}, error={}", request.id(), e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/income-sources")
+    public ResponseEntity<?> deleteIncomeSource(@RequestBody DeleteIncomeSourceRequestDTO request) {
+        try {
+            logger.info("Received DELETE request to delete income source: id={}", request.id());
+            financeService.deleteIncomeSource(request);
+            logger.info("Income source deleted successfully: id={}", request.id());
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            logger.error("Income source not found: id={}, error={}", request.id(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error deleting income source: id={}, error={}", request.id(), e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

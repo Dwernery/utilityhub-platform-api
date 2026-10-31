@@ -3,8 +3,10 @@ package com.utilityhub.api.service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.math.BigDecimal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,16 +16,22 @@ import com.utilityhub.api.db.entity.finance.Account;
 import com.utilityhub.api.db.entity.finance.AccountCategory;
 import com.utilityhub.api.db.entity.finance.AccountMonthlyBalance;
 import com.utilityhub.api.db.entity.finance.AccountType;
+import com.utilityhub.api.db.entity.finance.IncomeSource;
 import com.utilityhub.api.db.repository.finance.AccountMonthlyBalanceRepository;
 import com.utilityhub.api.db.repository.finance.AccountRepository;
 import com.utilityhub.api.db.repository.finance.AccountTypeRepository;
+import com.utilityhub.api.db.repository.finance.IncomeSourceRepository;
 import com.utilityhub.api.db.repository.finance.NetWorthSnapshotRepository;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
+import com.utilityhub.api.dto.request.DeleteIncomeSourceRequestDTO;
 import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
 import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
+import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
+import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountBalanceDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
+import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
 import com.utilityhub.api.db.repository.finance.TransactionRepository;
@@ -36,17 +44,20 @@ public class FinanceService {
         private final TransactionRepository transactionRepository;
         private final AccountRepository accountRepository;
         private final AccountTypeRepository accountTypeRepository;
+        private final IncomeSourceRepository incomeSourceRepository;
 
         public FinanceService(NetWorthSnapshotRepository netWorthSnapshotRepository,
                         AccountMonthlyBalanceRepository accountMonthlyBalanceRepository,
                         TransactionRepository transactionRepository,
                         AccountRepository accountRepository,
-                        AccountTypeRepository accountTypeRepository) {
+                        AccountTypeRepository accountTypeRepository,
+                        IncomeSourceRepository incomeSourceRepository) {
                 this.netWorthSnapshotRepository = netWorthSnapshotRepository;
                 this.accountMonthlyBalanceRepository = accountMonthlyBalanceRepository;
                 this.transactionRepository = transactionRepository;
                 this.accountRepository = accountRepository;
                 this.accountTypeRepository = accountTypeRepository;
+                this.incomeSourceRepository = incomeSourceRepository;
         }
 
         public List<NetWorthHistoryResponseDTO> getCompleteNetWorthHistory() {
@@ -274,5 +285,90 @@ public class FinanceService {
                 transactionRepository.saveAll(allTransactions);
 
                 logger.info("All transactions cleared successfully - {} transactions updated", allTransactions.size());
+        }
+
+        public List<IncomeSourceResponseDTO> getAllIncomeSources() {
+                return incomeSourceRepository.findAll()
+                                .stream()
+                                .map(incomeSource -> new IncomeSourceResponseDTO(
+                                                incomeSource.getId(),
+                                                incomeSource.getYear(),
+                                                incomeSource.getName(),
+                                                incomeSource.getAmount()))
+                                .toList();
+        }
+
+        public IncomeSourceResponseDTO createIncomeSource(IncomeSourceCreateRequestDTO request) {
+                logger.info("Creating new income source: year={}, name={}, amount={}",
+                                request.year(), request.name(), request.amount());
+
+                if (request.year() == null) {
+                        throw new IllegalArgumentException("year is required");
+                }
+                validateNameAndAmount(request.name(), request.amount());
+
+                IncomeSource incomeSource = new IncomeSource();
+                incomeSource.setYear(request.year());
+                incomeSource.setName(request.name().trim());
+                incomeSource.setAmount(request.amount());
+                IncomeSource saved = incomeSourceRepository.save(incomeSource);
+
+                logger.info("Income source created successfully: id={}", saved.getId());
+
+                return new IncomeSourceResponseDTO(saved.getId(), saved.getYear(), saved.getName(),
+                                saved.getAmount());
+        }
+
+        public IncomeSourceResponseDTO updateIncomeSource(IncomeSourceUpdateRequestDTO request) {
+                logger.info("Attempting to update income source: id={}, name={}, amount={}",
+                                request.id(), request.name(), request.amount());
+
+                if (request.id() == null) {
+                        throw new IllegalArgumentException("id is required");
+                }
+                validateNameAndAmount(request.name(), request.amount());
+
+                IncomeSource incomeSource = incomeSourceRepository.findById(request.id())
+                                .orElseThrow(() -> {
+                                        String errorMsg = "Income source not found for id: " + request.id();
+                                        logger.error(errorMsg);
+                                        return new NoSuchElementException(errorMsg);
+                                });
+
+                incomeSource.setName(request.name().trim());
+                incomeSource.setAmount(request.amount());
+                IncomeSource saved = incomeSourceRepository.save(incomeSource);
+
+                logger.info("Income source updated successfully: id={}", saved.getId());
+
+                return new IncomeSourceResponseDTO(saved.getId(), saved.getYear(), saved.getName(),
+                                saved.getAmount());
+        }
+
+        public void deleteIncomeSource(DeleteIncomeSourceRequestDTO request) {
+                logger.info("Attempting to delete income source: id={}", request.id());
+
+                if (request.id() == null) {
+                        throw new IllegalArgumentException("id is required");
+                }
+
+                IncomeSource incomeSource = incomeSourceRepository.findById(request.id())
+                                .orElseThrow(() -> {
+                                        String errorMsg = "Income source not found for id: " + request.id();
+                                        logger.error(errorMsg);
+                                        return new NoSuchElementException(errorMsg);
+                                });
+
+                incomeSourceRepository.delete(incomeSource);
+                logger.info("Income source deleted successfully: id={}", request.id());
+        }
+
+        private void validateNameAndAmount(String name, BigDecimal amount) {
+                if (name == null || name.isBlank()) {
+                        throw new IllegalArgumentException("name is required");
+                }
+                if (amount == null) {
+                        throw new IllegalArgumentException("amount is required");
+                }
         }
 }

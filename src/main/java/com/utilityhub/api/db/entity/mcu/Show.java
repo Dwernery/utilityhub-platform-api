@@ -1,18 +1,15 @@
 package com.utilityhub.api.db.entity.mcu;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "shows")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Show {
 
     @Id
@@ -23,7 +20,7 @@ public class Show {
     private String title;
 
     @Column(nullable = false, name = "premiere_date")
-    private Date premiereDate;
+    private LocalDate premiereDate;
 
     @Column(columnDefinition = "TEXT")
     private String synopsis;

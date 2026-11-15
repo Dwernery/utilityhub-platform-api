@@ -9,8 +9,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "account_types")
+@Getter
+@Setter
 public class AccountType {
 
     @Id
@@ -24,29 +29,4 @@ public class AccountType {
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false, length = 20)
     private AccountCategory category;
-
-    public Integer getId() {
-        return this.id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public AccountCategory getCategory() {
-        return this.category;
-    }
-
-    public void setCategory(AccountCategory category) {
-        this.category = category;
-    }
-
 }

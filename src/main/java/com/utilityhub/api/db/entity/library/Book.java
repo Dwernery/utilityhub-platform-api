@@ -1,11 +1,11 @@
 package com.utilityhub.api.db.entity.library;
 
 import java.time.LocalDate;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,8 +13,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "books")
+@Getter
+@Setter
 public class Book {
 
     @Id
@@ -50,114 +55,17 @@ public class Book {
     @Column(name = "rating")
     private Integer rating;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private Author author;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id")
     private Series series;
-
-    public Integer getId() {
-        return this.id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return this.title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public Integer getPages() {
-        return this.pages;
-    }
-
-    public void setPages(Integer pages) {
-        this.pages = pages;
-    }
-
-    public BookStatus getStatus() {
-        return this.status;
-    }
-
-    public void setStatus(BookStatus status) {
-        this.status = status;
-    }
-
-    public LocalDate getStartDate() {
-        return this.startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return this.endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    public Integer getCurrentPage() {
-        return this.currentPage;
-    }
-
-    public void setCurrentPage(Integer currentPage) {
-        this.currentPage = currentPage;
-    }
-
-    public String getIsbn13() {
-        return this.isbn13;
-    }
-
-    public void setIsbn13(String isbn13) {
-        this.isbn13 = isbn13;
-    }
-
-    public String getS3Url() {
-        return this.s3Url;
-    }
-
-    public void setS3Url(String s3Url) {
-        this.s3Url = s3Url;
-    }
-
-    public Author getAuthor() {
-        return this.author;
-    }
-
-    public void setAuthor(Author author) {
-        this.author = author;
-    }
-
-    public Series getSeries() {
-        return this.series;
-    }
-
-    public void setSeries(Series series) {
-        this.series = series;
-    }
 
     public enum BookStatus {
         UNREAD,
         READ,
         IN_PROGRESS
     }
-
-    public Integer getRating() {
-        return this.rating;
-    }
-
-    public void setRating(Integer newRating) {
-        this.rating = newRating;
-    }
-
 }

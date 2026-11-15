@@ -1,7 +1,3 @@
 package com.utilityhub.api.dto.response.library;
 
-public record AttachFileResponseDTO(
-        boolean success,
-        String fileUrl,
-        String message) {
-}
+public record AttachFileResponseDTO(boolean success, String fileUrl, String message) {}

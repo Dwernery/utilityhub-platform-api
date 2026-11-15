@@ -1,18 +1,15 @@
 package com.utilityhub.api.db.entity.mcu;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "movies")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Movie {
 
     @Id
@@ -22,8 +19,8 @@ public class Movie {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, name="premiere_date")
-    private Date premiereDate;
+    @Column(nullable = false, name = "premiere_date")
+    private LocalDate premiereDate;
 
     @Column
     private Integer runtime;

@@ -1,374 +1,286 @@
 package com.utilityhub.api.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.math.BigDecimal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utilityhub.api.db.entity.finance.Account;
 import com.utilityhub.api.db.entity.finance.AccountCategory;
 import com.utilityhub.api.db.entity.finance.AccountMonthlyBalance;
 import com.utilityhub.api.db.entity.finance.AccountType;
 import com.utilityhub.api.db.entity.finance.IncomeSource;
+import com.utilityhub.api.db.entity.finance.Transaction;
 import com.utilityhub.api.db.repository.finance.AccountMonthlyBalanceRepository;
 import com.utilityhub.api.db.repository.finance.AccountRepository;
 import com.utilityhub.api.db.repository.finance.AccountTypeRepository;
 import com.utilityhub.api.db.repository.finance.IncomeSourceRepository;
 import com.utilityhub.api.db.repository.finance.NetWorthSnapshotRepository;
+import com.utilityhub.api.db.repository.finance.TransactionRepository;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
-import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
-import com.utilityhub.api.dto.request.DeleteIncomeSourceRequestDTO;
-import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
-import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
-import com.utilityhub.api.dto.response.finance.AccountBalanceDTO;
+import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
+import com.utilityhub.api.dto.response.finance.AccountBalanceResponseDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
-import com.utilityhub.api.db.repository.finance.TransactionRepository;
+import com.utilityhub.api.exception.InvalidRequestException;
+import com.utilityhub.api.exception.ResourceNotFoundException;
 
+/**
+ * Class-level {@code @Transactional(readOnly = true)} makes every method run in
+ * a read-only transaction by default; methods that write override it with a
+ * plain {@code @Transactional}. If a write method throws a RuntimeException,
+ * every statement it ran is rolled back together.
+ */
 @Service
+@Transactional(readOnly = true)
 public class FinanceService {
-        private static final Logger logger = LoggerFactory.getLogger(FinanceService.class);
-        private final NetWorthSnapshotRepository netWorthSnapshotRepository;
-        private final AccountMonthlyBalanceRepository accountMonthlyBalanceRepository;
-        private final TransactionRepository transactionRepository;
-        private final AccountRepository accountRepository;
-        private final AccountTypeRepository accountTypeRepository;
-        private final IncomeSourceRepository incomeSourceRepository;
+    private static final Logger log = LoggerFactory.getLogger(FinanceService.class);
+    private final NetWorthSnapshotRepository netWorthSnapshotRepository;
+    private final AccountMonthlyBalanceRepository accountMonthlyBalanceRepository;
+    private final TransactionRepository transactionRepository;
+    private final AccountRepository accountRepository;
+    private final AccountTypeRepository accountTypeRepository;
+    private final IncomeSourceRepository incomeSourceRepository;
 
-        public FinanceService(NetWorthSnapshotRepository netWorthSnapshotRepository,
-                        AccountMonthlyBalanceRepository accountMonthlyBalanceRepository,
-                        TransactionRepository transactionRepository,
-                        AccountRepository accountRepository,
-                        AccountTypeRepository accountTypeRepository,
-                        IncomeSourceRepository incomeSourceRepository) {
-                this.netWorthSnapshotRepository = netWorthSnapshotRepository;
-                this.accountMonthlyBalanceRepository = accountMonthlyBalanceRepository;
-                this.transactionRepository = transactionRepository;
-                this.accountRepository = accountRepository;
-                this.accountTypeRepository = accountTypeRepository;
-                this.incomeSourceRepository = incomeSourceRepository;
+    public FinanceService(
+            NetWorthSnapshotRepository netWorthSnapshotRepository,
+            AccountMonthlyBalanceRepository accountMonthlyBalanceRepository,
+            TransactionRepository transactionRepository,
+            AccountRepository accountRepository,
+            AccountTypeRepository accountTypeRepository,
+            IncomeSourceRepository incomeSourceRepository) {
+        this.netWorthSnapshotRepository = netWorthSnapshotRepository;
+        this.accountMonthlyBalanceRepository = accountMonthlyBalanceRepository;
+        this.transactionRepository = transactionRepository;
+        this.accountRepository = accountRepository;
+        this.accountTypeRepository = accountTypeRepository;
+        this.incomeSourceRepository = incomeSourceRepository;
+    }
+
+    private static final String SOURCE_HISTORICAL = "historical";
+    private static final String SOURCE_ACCOUNT_BASED = "account-based";
+
+    /** By date; on the same date, historical snapshots come before account-based entries. */
+    private static final Comparator<NetWorthHistoryResponseDTO> HISTORY_ORDER = Comparator.comparing(
+                    NetWorthHistoryResponseDTO::date)
+            .thenComparing(entry -> SOURCE_HISTORICAL.equals(entry.source()) ? 0 : 1);
+
+    public List<NetWorthHistoryResponseDTO> getCompleteNetWorthHistory() {
+        Stream<NetWorthHistoryResponseDTO> historical =
+                netWorthSnapshotRepository.findAllByOrderByBalanceMonthAsc().stream()
+                        .map(snapshot -> new NetWorthHistoryResponseDTO(
+                                snapshot.getBalanceMonth(), SOURCE_HISTORICAL, snapshot.getNetWorth(), null));
+
+        Map<LocalDate, List<AccountBalanceResponseDTO>> accountsByDate =
+                accountMonthlyBalanceRepository.findAllAccountBalancesWithDetails().stream()
+                        .collect(Collectors.groupingBy(
+                                AccountMonthlyBalance::getBalanceDate,
+                                Collectors.mapping(FinanceService::toAccountBalanceDTO, Collectors.toList())));
+
+        Stream<NetWorthHistoryResponseDTO> accountBased = accountsByDate.entrySet().stream()
+                .map(entry -> new NetWorthHistoryResponseDTO(
+                        entry.getKey(), SOURCE_ACCOUNT_BASED, netWorth(entry.getValue()), entry.getValue()));
+
+        return Stream.concat(historical, accountBased).sorted(HISTORY_ORDER).toList();
+    }
+
+    private static AccountBalanceResponseDTO toAccountBalanceDTO(AccountMonthlyBalance balance) {
+        Account account = balance.getAccount();
+        return new AccountBalanceResponseDTO(
+                account.getId(),
+                account.getName(),
+                account.getAccountType().getName(),
+                account.getAccountType().getCategory().name(),
+                balance.getBalance());
+    }
+
+    /** Assets minus liabilities, in a single pass. */
+    private static BigDecimal netWorth(List<AccountBalanceResponseDTO> accounts) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (AccountBalanceResponseDTO account : accounts) {
+            boolean isLiability = AccountCategory.LIABILITY.name().equals(account.category());
+            total = isLiability ? total.subtract(account.balance()) : total.add(account.balance());
         }
+        return total;
+    }
 
-        public List<NetWorthHistoryResponseDTO> getCompleteNetWorthHistory() {
-                // Get historical net worth snapshots
-                List<NetWorthHistoryResponseDTO> historicalNetWorth = netWorthSnapshotRepository
-                                .findAllNetWorthSnapshots()
-                                .stream()
-                                .map(snapshot -> new NetWorthHistoryResponseDTO(
-                                                snapshot.getBalanceMonth(),
-                                                "historical",
-                                                snapshot.getNetWorth(),
-                                                null))
-                                .toList();
-
-                // Get individual account balances and group by date
-                Map<LocalDate, List<AccountBalanceDTO>> accountsByDate = accountMonthlyBalanceRepository
-                                .findAllAccountBalancesWithDetails()
-                                .stream()
-                                .collect(Collectors.groupingBy(
-                                                amb -> amb.getBalanceDate(),
-                                                Collectors.mapping(
-                                                                amb -> new AccountBalanceDTO(
-                                                                                amb.getAccount().getId(),
-                                                                                amb.getAccount().getName(),
-                                                                                amb.getAccount().getAccountType()
-                                                                                                .getName(),
-                                                                                amb.getAccount().getAccountType()
-                                                                                                .getCategory()
-                                                                                                .toString(),
-                                                                                amb.getBalance()),
-                                                                Collectors.toList())));
-
-                List<NetWorthHistoryResponseDTO> accountBalances = accountsByDate.entrySet()
-                                .stream()
-                                .map(entry -> {
-                                        LocalDate date = entry.getKey();
-                                        List<AccountBalanceDTO> accounts = entry.getValue();
-
-                                        java.math.BigDecimal assets = accounts.stream()
-                                                        .filter(acc -> "ASSET".equals(acc.getCategory()))
-                                                        .map(AccountBalanceDTO::getBalance)
-                                                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
-                                        java.math.BigDecimal liabilities = accounts.stream()
-                                                        .filter(acc -> "LIABILITY".equals(acc.getCategory()))
-                                                        .map(AccountBalanceDTO::getBalance)
-                                                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
-                                        java.math.BigDecimal netWorth = assets.subtract(liabilities);
-                                        return new NetWorthHistoryResponseDTO(date, "account-based", netWorth,
-                                                        accounts);
-                                })
-                                .toList();
-
-                return Stream.concat(historicalNetWorth.stream(), accountBalances.stream())
-                                .sorted((a, b) -> {
-                                        int dateCompare = a.getDate().compareTo(b.getDate());
-                                        if (dateCompare != 0) {
-                                                return dateCompare;
-                                        }
-                                        // Historical first, then account-based
-                                        if (a.getSource().equals("historical")
-                                                        && b.getSource().equals("account-based")) {
-                                                return -1;
-                                        }
-                                        return 1;
-                                })
-                                .toList();
+    /** Creates or replaces the balance for one account and date (PUT is idempotent). */
+    @Transactional
+    public void updateAccountBalance(Integer accountId, LocalDate balanceDate, BigDecimal balance) {
+        if (!accountRepository.existsById(accountId)) {
+            throw new ResourceNotFoundException("Account", accountId);
         }
+        accountMonthlyBalanceRepository.upsertBalance(accountId, balanceDate, balance);
+        log.info("Saved balance for accountId={}, balanceDate={}", accountId, balanceDate);
+    }
 
-        public void updateAccountBalance(EditAccountBalanceRequestDTO request) {
-                logger.info("Attempting to find or create account balance: accountId={}, balanceDate={}",
-                                request.accountId(), request.balanceDate());
+    public List<TransactionResponseDTO> getAllTransactions() {
+        return transactionRepository.findAll(Sort.by(Sort.Order.desc("amount"), Sort.Order.asc("id"))).stream()
+                .map(FinanceService::toTransactionDTO)
+                .toList();
+    }
 
-                AccountMonthlyBalance accountMonthlyBalance = accountMonthlyBalanceRepository
-                                .findByAccountIdAndBalanceDate(request.accountId(), request.balanceDate())
-                                .orElseGet(() -> {
-                                        logger.info("Account balance not found, creating new record for accountId={}, balanceDate={}",
-                                                        request.accountId(), request.balanceDate());
-                                        Account account = accountRepository.findById(request.accountId())
-                                                        .orElseThrow(() -> {
-                                                                String errorMsg = "Account not found for account id: "
-                                                                                + request.accountId();
-                                                                logger.error(errorMsg);
-                                                                return new RuntimeException(errorMsg);
-                                                        });
-                                        AccountMonthlyBalance newBalance = new AccountMonthlyBalance();
-                                        newBalance.setAccount(account);
-                                        newBalance.setBalanceDate(request.balanceDate());
-                                        return newBalance;
-                                });
+    public List<AccountResponseDTO> getAllAccounts() {
+        return accountRepository.findAll().stream()
+                .map(account -> new AccountResponseDTO(
+                        account.getId(),
+                        account.getName(),
+                        account.getAccountType().getName(),
+                        account.getAccountType().getCategory().toString()))
+                .toList();
+    }
 
-                logger.info("Setting balance from {} to {} for accountId={}",
-                                accountMonthlyBalance.getBalance(), request.balance(), request.accountId());
+    /**
+     * Creates the account type (if new), the account, and optionally its first
+     * balance. Because this runs in one transaction, a failure on any step
+     * rolls back the earlier inserts, so no account is left without its balance.
+     */
+    @Transactional
+    public AccountResponseDTO createAccount(AccountCreateRequestDTO request) {
+        AccountCategory category = request.category();
 
-                accountMonthlyBalance.setBalance(request.balance());
-                accountMonthlyBalanceRepository.save(accountMonthlyBalance);
+        AccountType accountType = accountTypeRepository
+                .findByName(request.accountType())
+                .map(existing -> requireSameCategory(existing, category))
+                .orElseGet(() -> {
+                    log.debug("Creating account type '{}' ({})", request.accountType(), category);
+                    AccountType newAccountType = new AccountType();
+                    newAccountType.setName(request.accountType());
+                    newAccountType.setCategory(category);
+                    return accountTypeRepository.save(newAccountType);
+                });
 
-                logger.info("Account balance saved successfully for accountId={}", request.accountId());
+        Account account = new Account();
+        account.setName(request.accountName());
+        account.setAccountType(accountType);
+        Account savedAccount = accountRepository.save(account);
+
+        // Create initial monthly balance if provided
+        if (request.balance() != null && request.balanceDate() != null) {
+            AccountMonthlyBalance monthlyBalance = new AccountMonthlyBalance();
+            monthlyBalance.setAccount(savedAccount);
+            monthlyBalance.setBalance(request.balance());
+            monthlyBalance.setBalanceDate(request.balanceDate());
+            accountMonthlyBalanceRepository.save(monthlyBalance);
         }
+        log.info(
+                "Created account id={} (type '{}', initial balance: {})",
+                savedAccount.getId(),
+                accountType.getName(),
+                request.balanceDate() != null ? request.balanceDate() : "none");
 
-        public List<TransactionResponseDTO> getAllTransactions() {
-                return transactionRepository.findAll()
-                                .stream()
-                                .sorted((t1, t2) -> t2.getAmount().compareTo(t1.getAmount()))
-                                .map(transaction -> new TransactionResponseDTO(
-                                                transaction.getId(),
-                                                transaction.getName(),
-                                                transaction.getTransactionType(),
-                                                transaction.getAmount(),
-                                                transaction.isPaid(),
-                                                transaction.isCash()))
-                                .toList();
+        return new AccountResponseDTO(
+                savedAccount.getId(),
+                savedAccount.getName(),
+                savedAccount.getAccountType().getName(),
+                savedAccount.getAccountType().getCategory().toString());
+    }
+
+    /** Type names are unique, so "Mortgage" can't be both a LIABILITY and an ASSET. */
+    private static AccountType requireSameCategory(AccountType existing, AccountCategory requested) {
+        if (existing.getCategory() != requested) {
+            throw new InvalidRequestException("Account type '" + existing.getName()
+                    + "' already exists as " + existing.getCategory()
+                    + "; choose a different type name for " + requested + " accounts");
         }
+        return existing;
+    }
 
-        public List<AccountResponseDTO> getAllAccounts() {
-                return accountRepository.findAll()
-                                .stream()
-                                .map(account -> new AccountResponseDTO(
-                                                account.getId(),
-                                                account.getName(),
-                                                account.getAccountType().getName(),
-                                                account.getAccountType().getCategory().toString()))
-                                .toList();
-        }
+    @Transactional
+    public void deleteAccountBalance(Integer accountId, LocalDate balanceDate) {
+        AccountMonthlyBalance balance = accountMonthlyBalanceRepository
+                .findByAccountIdAndBalanceDate(accountId, balanceDate)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Account balance", "accountId=" + accountId + ", balanceDate=" + balanceDate));
+        accountMonthlyBalanceRepository.delete(balance);
+        log.info("Deleted balance for accountId={}, balanceDate={}", accountId, balanceDate);
+    }
 
-        public AccountResponseDTO createAccount(AccountCreateRequestDTO request) {
-                logger.info("Creating new account: accountName={}, accountType={}, category={}",
-                                request.accountName(), request.accountType(), request.category());
+    @Transactional
+    public TransactionResponseDTO editTransaction(Integer id, TransactionUpdateRequestDTO request) {
+        Transaction transaction =
+                transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
 
-                try {
-                        AccountCategory category = AccountCategory.valueOf(request.category().toUpperCase());
+        transaction.setName(request.name().trim());
+        transaction.setAmount(request.amount());
+        transaction.setPaid(request.paid());
 
-                        AccountType accountType = accountTypeRepository
-                                        .findByNameAndCategory(request.accountType(), category)
-                                        .orElseGet(() -> {
-                                                logger.info("AccountType not found, creating new: name={}, category={}",
-                                                                request.accountType(), category);
-                                                AccountType newAccountType = new AccountType();
-                                                newAccountType.setName(request.accountType());
-                                                newAccountType.setCategory(category);
-                                                return accountTypeRepository.save(newAccountType);
-                                        });
+        Transaction saved = transactionRepository.save(transaction);
+        log.info("Updated transaction id={}", id);
+        return toTransactionDTO(saved);
+    }
 
-                        Account account = new Account();
-                        account.setName(request.accountName());
-                        account.setAccountType(accountType);
-                        Account savedAccount = accountRepository.save(account);
+    @Transactional
+    public void clearAllTransactionsPaid() {
+        int updated = transactionRepository.markAllUnpaid();
+        log.info("Marked {} transactions as unpaid", updated);
+    }
 
-                        logger.info("Account created successfully: id={}, name={}", savedAccount.getId(),
-                                        savedAccount.getName());
+    public List<IncomeSourceResponseDTO> getAllIncomeSources() {
+        return incomeSourceRepository.findAll().stream()
+                .map(FinanceService::toIncomeSourceDTO)
+                .toList();
+    }
 
-                        // Create initial monthly balance if provided
-                        if (request.balance() != null && request.balanceDate() != null) {
-                                logger.info("Creating initial balance for account: id={}, balance={}, balanceDate={}",
-                                                savedAccount.getId(), request.balance(), request.balanceDate());
-                                AccountMonthlyBalance monthlyBalance = new AccountMonthlyBalance();
-                                monthlyBalance.setAccount(savedAccount);
-                                monthlyBalance.setBalance(request.balance());
-                                monthlyBalance.setBalanceDate(request.balanceDate());
-                                accountMonthlyBalanceRepository.save(monthlyBalance);
-                                logger.info("Initial balance created successfully for account: id={}",
-                                                savedAccount.getId());
-                        }
+    @Transactional
+    public IncomeSourceResponseDTO createIncomeSource(IncomeSourceCreateRequestDTO request) {
+        IncomeSource incomeSource = new IncomeSource();
+        incomeSource.setYear(request.year());
+        incomeSource.setName(request.name().trim());
+        incomeSource.setAmount(request.amount());
+        IncomeSource saved = incomeSourceRepository.save(incomeSource);
 
-                        return new AccountResponseDTO(
-                                        savedAccount.getId(),
-                                        savedAccount.getName(),
-                                        savedAccount.getAccountType().getName(),
-                                        savedAccount.getAccountType().getCategory().toString());
-                } catch (IllegalArgumentException e) {
-                        String errorMsg = "Invalid category: " + request.category() + ". Must be ASSET or LIABILITY";
-                        logger.error(errorMsg, e);
-                        throw new RuntimeException(errorMsg, e);
-                }
-        }
+        log.info("Created income source id={}", saved.getId());
+        return toIncomeSourceDTO(saved);
+    }
 
-        public void deleteAccountBalance(DeleteAccountBalanceRequestDTO request) {
-                logger.info("Attempting to delete account balance: accountId={}, balanceDate={}",
-                                request.accountId(), request.balanceDate());
+    @Transactional
+    public IncomeSourceResponseDTO updateIncomeSource(Integer id, IncomeSourceUpdateRequestDTO request) {
+        IncomeSource incomeSource = findIncomeSource(id);
+        incomeSource.setName(request.name().trim());
+        incomeSource.setAmount(request.amount());
+        IncomeSource saved = incomeSourceRepository.save(incomeSource);
+        log.info("Updated income source id={}", id);
+        return toIncomeSourceDTO(saved);
+    }
 
-                AccountMonthlyBalance accountMonthlyBalance = accountMonthlyBalanceRepository
-                                .findByAccountIdAndBalanceDate(request.accountId(), request.balanceDate())
-                                .orElseThrow(() -> {
-                                        String errorMsg = "Account balance not found for account id: "
-                                                        + request.accountId() + " and balance date: "
-                                                        + request.balanceDate();
-                                        logger.error(errorMsg);
-                                        return new RuntimeException(errorMsg);
-                                });
+    @Transactional
+    public void deleteIncomeSource(Integer id) {
+        incomeSourceRepository.delete(findIncomeSource(id));
+        log.info("Deleted income source id={}", id);
+    }
 
-                logger.info("Deleting account balance record for accountId={}, balanceDate={}",
-                                request.accountId(), request.balanceDate());
-                accountMonthlyBalanceRepository.delete(accountMonthlyBalance);
+    private IncomeSource findIncomeSource(Integer id) {
+        return incomeSourceRepository
+                .findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Income source", id));
+    }
 
-                logger.info("Account balance deleted successfully for accountId={}", request.accountId());
-        }
+    private static TransactionResponseDTO toTransactionDTO(Transaction transaction) {
+        return new TransactionResponseDTO(
+                transaction.getId(),
+                transaction.getName(),
+                transaction.getTransactionType(),
+                transaction.getAmount(),
+                transaction.isPaid(),
+                transaction.isCash());
+    }
 
-        public void editTransaction(EditTransactionRequestDTO request) {
-                logger.info("Attempting to edit transaction: id={}, name={}, amount={}, paid={}",
-                                request.id(), request.name(), request.amount(), request.paid());
-
-                com.utilityhub.api.db.entity.finance.Transaction transaction = transactionRepository
-                                .findById(request.id())
-                                .orElseThrow(() -> {
-                                        String errorMsg = "Transaction not found for id: " + request.id();
-                                        logger.error(errorMsg);
-                                        return new RuntimeException(errorMsg);
-                                });
-
-                transaction.setName(request.name());
-                transaction.setAmount(request.amount());
-                transaction.setPaid(request.paid());
-
-                transactionRepository.save(transaction);
-                logger.info("Transaction updated successfully: id={}", request.id());
-        }
-
-        public void clearAllTransactionsPaid() {
-                logger.info("Clearing all transactions - setting paid to false");
-                List<com.utilityhub.api.db.entity.finance.Transaction> allTransactions = transactionRepository
-                                .findAll();
-
-                allTransactions.forEach(transaction -> transaction.setPaid(false));
-                transactionRepository.saveAll(allTransactions);
-
-                logger.info("All transactions cleared successfully - {} transactions updated", allTransactions.size());
-        }
-
-        public List<IncomeSourceResponseDTO> getAllIncomeSources() {
-                return incomeSourceRepository.findAll()
-                                .stream()
-                                .map(incomeSource -> new IncomeSourceResponseDTO(
-                                                incomeSource.getId(),
-                                                incomeSource.getYear(),
-                                                incomeSource.getName(),
-                                                incomeSource.getAmount()))
-                                .toList();
-        }
-
-        public IncomeSourceResponseDTO createIncomeSource(IncomeSourceCreateRequestDTO request) {
-                logger.info("Creating new income source: year={}, name={}, amount={}",
-                                request.year(), request.name(), request.amount());
-
-                if (request.year() == null) {
-                        throw new IllegalArgumentException("year is required");
-                }
-                validateNameAndAmount(request.name(), request.amount());
-
-                IncomeSource incomeSource = new IncomeSource();
-                incomeSource.setYear(request.year());
-                incomeSource.setName(request.name().trim());
-                incomeSource.setAmount(request.amount());
-                IncomeSource saved = incomeSourceRepository.save(incomeSource);
-
-                logger.info("Income source created successfully: id={}", saved.getId());
-
-                return new IncomeSourceResponseDTO(saved.getId(), saved.getYear(), saved.getName(),
-                                saved.getAmount());
-        }
-
-        public IncomeSourceResponseDTO updateIncomeSource(IncomeSourceUpdateRequestDTO request) {
-                logger.info("Attempting to update income source: id={}, name={}, amount={}",
-                                request.id(), request.name(), request.amount());
-
-                if (request.id() == null) {
-                        throw new IllegalArgumentException("id is required");
-                }
-                validateNameAndAmount(request.name(), request.amount());
-
-                IncomeSource incomeSource = incomeSourceRepository.findById(request.id())
-                                .orElseThrow(() -> {
-                                        String errorMsg = "Income source not found for id: " + request.id();
-                                        logger.error(errorMsg);
-                                        return new NoSuchElementException(errorMsg);
-                                });
-
-                incomeSource.setName(request.name().trim());
-                incomeSource.setAmount(request.amount());
-                IncomeSource saved = incomeSourceRepository.save(incomeSource);
-
-                logger.info("Income source updated successfully: id={}", saved.getId());
-
-                return new IncomeSourceResponseDTO(saved.getId(), saved.getYear(), saved.getName(),
-                                saved.getAmount());
-        }
-
-        public void deleteIncomeSource(DeleteIncomeSourceRequestDTO request) {
-                logger.info("Attempting to delete income source: id={}", request.id());
-
-                if (request.id() == null) {
-                        throw new IllegalArgumentException("id is required");
-                }
-
-                IncomeSource incomeSource = incomeSourceRepository.findById(request.id())
-                                .orElseThrow(() -> {
-                                        String errorMsg = "Income source not found for id: " + request.id();
-                                        logger.error(errorMsg);
-                                        return new NoSuchElementException(errorMsg);
-                                });
-
-                incomeSourceRepository.delete(incomeSource);
-                logger.info("Income source deleted successfully: id={}", request.id());
-        }
-
-        private void validateNameAndAmount(String name, BigDecimal amount) {
-                if (name == null || name.isBlank()) {
-                        throw new IllegalArgumentException("name is required");
-                }
-                if (amount == null) {
-                        throw new IllegalArgumentException("amount is required");
-                }
-        }
+    private static IncomeSourceResponseDTO toIncomeSourceDTO(IncomeSource incomeSource) {
+        return new IncomeSourceResponseDTO(
+                incomeSource.getId(), incomeSource.getYear(), incomeSource.getName(), incomeSource.getAmount());
+    }
 }

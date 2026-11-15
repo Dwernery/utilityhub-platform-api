@@ -1,38 +1,39 @@
 package com.utilityhub.api.controller;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.NoSuchElementException;
+import jakarta.validation.Valid;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import com.utilityhub.api.service.FinanceService;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.utilityhub.api.dto.request.AccountBalanceUpdateRequestDTO;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
-import com.utilityhub.api.dto.request.DeleteAccountBalanceRequestDTO;
-import com.utilityhub.api.dto.request.DeleteIncomeSourceRequestDTO;
-import com.utilityhub.api.dto.request.EditAccountBalanceRequestDTO;
-import com.utilityhub.api.dto.request.EditTransactionRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
+import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
+import com.utilityhub.api.service.FinanceService;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/finance")
-@Tag(name = "Finance Controller", description = "Endpoints for managing finance resources")
+@Tag(name = "Finance", description = "Accounts, balances, transactions and income")
 public class FinanceController {
-    private static final Logger logger = LoggerFactory.getLogger(FinanceController.class);
+
     private final FinanceService financeService;
 
     public FinanceController(FinanceService financeService) {
@@ -44,25 +45,7 @@ public class FinanceController {
         return financeService.getCompleteNetWorthHistory();
     }
 
-    @PutMapping("/account-balance")
-    public ResponseEntity<String> updateAccountBalance(@RequestBody EditAccountBalanceRequestDTO request) {
-        try {
-            logger.info("Received PUT request to update account balance: accountId={}, balanceDate={}, balance={}",
-                    request.accountId(), request.balanceDate(), request.balance());
-            financeService.updateAccountBalance(request);
-            logger.info("Account balance updated successfully for accountId={}", request.accountId());
-            return ResponseEntity.ok("Account balance updated successfully");
-        } catch (Exception e) {
-            logger.error("Error updating account balance: accountId={}, balanceDate={}, error={}",
-                    request.accountId(), request.balanceDate(), e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/transactions")
-    public List<TransactionResponseDTO> getAllTransactions() {
-        return financeService.getAllTransactions();
-    }
+    // --- Accounts and their monthly balances ---
 
     @GetMapping("/accounts")
     public List<AccountResponseDTO> getAllAccounts() {
@@ -70,62 +53,50 @@ public class FinanceController {
     }
 
     @PostMapping("/accounts")
-    public ResponseEntity<AccountResponseDTO> createAccount(@RequestBody AccountCreateRequestDTO request) {
-        try {
-            logger.info("Received POST request to create account: accountName={}, accountType={}, category={}",
-                    request.accountName(), request.accountType(), request.category());
-            AccountResponseDTO account = financeService.createAccount(request);
-            logger.info("Account created successfully: id={}, name={}", account.getId(), account.getAccountName());
-            return ResponseEntity.ok(account);
-        } catch (Exception e) {
-            logger.error("Error creating account: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
-        }
+    @ResponseStatus(HttpStatus.CREATED)
+    public AccountResponseDTO createAccount(@Valid @RequestBody AccountCreateRequestDTO request) {
+        return financeService.createAccount(request);
     }
 
-    @DeleteMapping("/account-balance")
-    public ResponseEntity<String> deleteAccountBalance(@RequestBody DeleteAccountBalanceRequestDTO request) {
-        try {
-            logger.info("Received DELETE request to delete account balance: accountId={}, balanceDate={}",
-                    request.accountId(), request.balanceDate());
-            financeService.deleteAccountBalance(request);
-            logger.info("Account balance deleted successfully for accountId={}", request.accountId());
-            return ResponseEntity.ok("Account balance deleted successfully");
-        } catch (Exception e) {
-            logger.error("Error deleting account balance: accountId={}, balanceDate={}, error={}",
-                    request.accountId(), request.balanceDate(), e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    /** Creates the balance if it doesn't exist, replaces it if it does. */
+    @PutMapping("/accounts/{accountId}/balances/{balanceDate}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void putAccountBalance(
+            @PathVariable Integer accountId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate balanceDate,
+            @Valid @RequestBody AccountBalanceUpdateRequestDTO request) {
+        financeService.updateAccountBalance(accountId, balanceDate, request.balance());
     }
 
-    @PutMapping("/transactions")
-    public ResponseEntity<String> editTransaction(@RequestBody EditTransactionRequestDTO request) {
-        try {
-            logger.info("Received PUT request to edit transaction: id={}, name={}, amount={}, paid={}",
-                    request.id(), request.name(), request.amount(), request.paid());
-            financeService.editTransaction(request);
-            logger.info("Transaction edited successfully: id={}", request.id());
-            return ResponseEntity.ok("Transaction edited successfully");
-        } catch (Exception e) {
-            logger.error("Error editing transaction: id={}, error={}",
-                    request.id(), e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @DeleteMapping("/accounts/{accountId}/balances/{balanceDate}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccountBalance(
+            @PathVariable Integer accountId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate balanceDate) {
+        financeService.deleteAccountBalance(accountId, balanceDate);
     }
 
+    // --- Transactions ---
+
+    @GetMapping("/transactions")
+    public List<TransactionResponseDTO> getAllTransactions() {
+        return financeService.getAllTransactions();
+    }
+
+    @PutMapping("/transactions/{id}")
+    public TransactionResponseDTO updateTransaction(
+            @PathVariable Integer id, @Valid @RequestBody TransactionUpdateRequestDTO request) {
+        return financeService.editTransaction(id, request);
+    }
+
+    /** Bulk action: marks every transaction as unpaid (e.g. at the start of a month). */
     @PutMapping("/transactions/clear-paid")
-    public ResponseEntity<String> clearAllTransactionsPaid() {
-        try {
-            logger.info("Received PUT request to clear all transactions - setting paid to false");
-            financeService.clearAllTransactionsPaid();
-            logger.info("All transactions cleared successfully");
-            return ResponseEntity.ok("All transactions cleared successfully");
-        } catch (Exception e) {
-            logger.error("Error clearing all transactions: error={}",
-                    e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearAllTransactionsPaid() {
+        financeService.clearAllTransactionsPaid();
     }
+
+    // --- Income sources ---
 
     @GetMapping("/income-sources")
     public List<IncomeSourceResponseDTO> getAllIncomeSources() {
@@ -133,50 +104,20 @@ public class FinanceController {
     }
 
     @PostMapping("/income-sources")
-    public ResponseEntity<?> createIncomeSource(@RequestBody IncomeSourceCreateRequestDTO request) {
-        try {
-            logger.info("Received POST request to create income source: year={}, name={}, amount={}",
-                    request.year(), request.name(), request.amount());
-            IncomeSourceResponseDTO incomeSource = financeService.createIncomeSource(request);
-            logger.info("Income source created successfully: id={}", incomeSource.id());
-            return ResponseEntity.ok(incomeSource);
-        } catch (Exception e) {
-            logger.error("Error creating income source: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @ResponseStatus(HttpStatus.CREATED)
+    public IncomeSourceResponseDTO createIncomeSource(@Valid @RequestBody IncomeSourceCreateRequestDTO request) {
+        return financeService.createIncomeSource(request);
     }
 
-    @PutMapping("/income-sources")
-    public ResponseEntity<?> updateIncomeSource(@RequestBody IncomeSourceUpdateRequestDTO request) {
-        try {
-            logger.info("Received PUT request to update income source: id={}, name={}, amount={}",
-                    request.id(), request.name(), request.amount());
-            IncomeSourceResponseDTO incomeSource = financeService.updateIncomeSource(request);
-            logger.info("Income source updated successfully: id={}", incomeSource.id());
-            return ResponseEntity.ok(incomeSource);
-        } catch (NoSuchElementException e) {
-            logger.error("Income source not found: id={}, error={}", request.id(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error updating income source: id={}, error={}", request.id(), e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @PutMapping("/income-sources/{id}")
+    public IncomeSourceResponseDTO updateIncomeSource(
+            @PathVariable Integer id, @Valid @RequestBody IncomeSourceUpdateRequestDTO request) {
+        return financeService.updateIncomeSource(id, request);
     }
 
-    @DeleteMapping("/income-sources")
-    public ResponseEntity<?> deleteIncomeSource(@RequestBody DeleteIncomeSourceRequestDTO request) {
-        try {
-            logger.info("Received DELETE request to delete income source: id={}", request.id());
-            financeService.deleteIncomeSource(request);
-            logger.info("Income source deleted successfully: id={}", request.id());
-            return ResponseEntity.noContent().build();
-        } catch (NoSuchElementException e) {
-            logger.error("Income source not found: id={}, error={}", request.id(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error deleting income source: id={}, error={}", request.id(), e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @DeleteMapping("/income-sources/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteIncomeSource(@PathVariable Integer id) {
+        financeService.deleteIncomeSource(id);
     }
-
 }

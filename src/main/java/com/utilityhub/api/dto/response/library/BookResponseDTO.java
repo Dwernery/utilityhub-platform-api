@@ -16,5 +16,4 @@ public record BookResponseDTO(
         Integer currentPage,
         Integer rating,
         String isbn13,
-        String s3Url) {
-}
+        String s3Url) {}

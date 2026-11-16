@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
 # Deploy UtilityHub on the server: the API (docker compose) and/or the web UI (nginx).
 #
-#   ./scripts/deploy.sh          # both
-#   ./scripts/deploy.sh api      # only the API
-#   ./scripts/deploy.sh web      # only the web UI
+#   ./scripts/deploy.sh            # whichever changed since its last successful deploy
+#   ./scripts/deploy.sh api        # the API, even if unchanged
+#   ./scripts/deploy.sh web        # the web UI, even if unchanged
+#   ./scripts/deploy.sh --force    # both, even if unchanged (e.g. after editing .env)
 #
-# Stops at the first problem. Settings (override by exporting them):
+# Stops at the first problem. The last successfully deployed commit of each app is
+# kept in $STATE_DIR, so a deploy that failed halfway is retried next time. Settings (override by exporting them):
 #   API_DIR   this repo on the server            (default: the folder above this script)
-#   UI_DIR    the utility-hub-ui checkout        (default: $API_DIR/../utility-hub-ui)
+#   UI_DIR    the web UI checkout                (default: UI_DIR in .env, else a sibling
+#             folder named utilityhub-ui or utility-hub-ui)
 #   WEB_ROOT  the folder nginx serves            (default: /var/www/utility-hub)
 # Read from $API_DIR/.env: API_TOKEN (required for the API check) and, optionally,
 # SITE_HOST (e.g. example.com) to check the public site at the end.
 
 set -euo pipefail
 
-API_DIR="${API_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-UI_DIR="${UI_DIR:-$API_DIR/../utility-hub-ui}"
+API_DIR="${API_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 WEB_ROOT="${WEB_ROOT:-/var/www/utility-hub}"
 SUDO="${SUDO-sudo}"           # set SUDO= to run without sudo (tests)
+STATE_DIR="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/utilityhub-deploy}"
 KEEP_OLD_ASSETS_DAYS=7        # old JS/CSS stay this long, so open tabs keep working
 API_URL="http://127.0.0.1:8080"
 
@@ -27,10 +30,41 @@ fail() { printf '\n\033[31mDeploy failed: %s\033[0m\n' "$*" >&2; exit 1; }
 # A value from the server's .env, without sourcing (and running) the whole file.
 env_value() { grep -E "^$1=" "$API_DIR/.env" 2>/dev/null | tail -n 1 | cut -d= -f2-; }
 
-deploy_api() {
-  step "API: pulling latest code"
-  git -C "$API_DIR" pull --ff-only
+# Where the web UI is checked out: UI_DIR from .env if set ("~/" allowed), otherwise
+# a sibling folder with the GitHub repo name or the older local name.
+find_ui_dir() {
+  local configured dir
+  configured="$(env_value UI_DIR)"
+  if [ -n "$configured" ]; then
+    echo "${configured/#\~/$HOME}"
+    return
+  fi
+  for dir in "$API_DIR/../utilityhub-ui" "$API_DIR/../utility-hub-ui"; do
+    if [ -d "$dir/.git" ]; then
+      echo "$dir"
+      return
+    fi
+  done
+  echo "$API_DIR/../utilityhub-ui"
+}
+UI_DIR="${UI_DIR:-$(find_ui_dir)}"
 
+pull() { # $1=label $2=checkout
+  step "$1: pulling latest code"
+  git -C "$2" pull --ff-only
+}
+
+# Has this checkout's current commit already been deployed successfully?
+already_deployed() { # $1=app name $2=checkout
+  [ "$(cat "$STATE_DIR/$1" 2>/dev/null)" = "$(git -C "$2" rev-parse HEAD)" ]
+}
+
+record_deployed() { # $1=app name $2=checkout
+  mkdir -p "$STATE_DIR"
+  git -C "$2" rev-parse HEAD >"$STATE_DIR/$1"
+}
+
+deploy_api() {
   step "API: rebuilding and restarting"
   (cd "$API_DIR" && docker compose up -d --build)
 
@@ -84,11 +118,6 @@ publish_web() {
 }
 
 deploy_web() {
-  [ -d "$UI_DIR/.git" ] || fail "web UI checkout not found at $UI_DIR (set UI_DIR)"
-
-  step "Web: pulling latest code"
-  git -C "$UI_DIR" pull --ff-only
-
   step "Web: installing, testing and building"
   (cd "$UI_DIR" && npm ci --no-audit --no-fund && npm test && npm run build)
 
@@ -112,8 +141,16 @@ deploy_web() {
 }
 
 main() {
-  local target="${1:-all}"
-  case "$target" in api | web | all) ;; *) fail "usage: $0 [api|web|all]" ;; esac
+  local target="all" force=false arg
+  for arg in "$@"; do
+    case "$arg" in
+      api | web | all) target="$arg" ;;
+      --force) force=true ;;
+      *) fail "usage: $0 [api|web|all] [--force]" ;;
+    esac
+  done
+  # Naming an app deploys it even if unchanged; only "all" skips unchanged apps.
+  [ "$target" = "all" ] || force=true
 
   # One deploy at a time.
   if command -v flock >/dev/null; then
@@ -121,11 +158,30 @@ main() {
     flock -n 9 || fail "another deploy is already running"
   fi
 
-  case "$target" in
-    api) deploy_api ;;
-    web) deploy_web ;;
-    all) deploy_api && deploy_web ;;
-  esac
+  if [ "$target" != "api" ]; then
+    [ -d "$UI_DIR/.git" ] || fail "web UI checkout not found at $UI_DIR (set UI_DIR in .env)"
+  fi
+
+  if [ "$target" != "web" ]; then
+    pull "API" "$API_DIR"
+    if $force || ! already_deployed api "$API_DIR"; then
+      deploy_api
+      record_deployed api "$API_DIR"
+    else
+      echo "API: already deployed at $(git -C "$API_DIR" rev-parse --short HEAD), skipping"
+    fi
+  fi
+
+  if [ "$target" != "api" ]; then
+    pull "Web" "$UI_DIR"
+    if $force || ! already_deployed web "$UI_DIR"; then
+      deploy_web
+      record_deployed web "$UI_DIR"
+    else
+      echo "Web: already deployed at $(git -C "$UI_DIR" rev-parse --short HEAD), skipping"
+    fi
+  fi
+
   step "Done"
 }
 

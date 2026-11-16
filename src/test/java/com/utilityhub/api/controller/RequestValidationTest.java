@@ -10,10 +10,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-import com.utilityhub.api.config.SecurityConfig;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.service.LibraryService;
 import com.utilityhub.api.service.MCUService;
+import com.utilityhub.api.support.WithApiToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * message, and must never reach the service layer.
  */
 @WebMvcTest({FinanceController.class, LibraryController.class, MCUController.class})
-@Import(SecurityConfig.class)
+@Import(WithApiToken.class)
 class RequestValidationTest {
 
     @Autowired

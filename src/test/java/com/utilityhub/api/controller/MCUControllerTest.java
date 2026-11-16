@@ -10,18 +10,18 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-import com.utilityhub.api.config.SecurityConfig;
 import com.utilityhub.api.db.entity.mcu.WatchStatus;
 import com.utilityhub.api.dto.response.mcu.DomainResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MCUTrackerResponseDTO;
 import com.utilityhub.api.service.MCUService;
+import com.utilityhub.api.support.WithApiToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @WebMvcTest(MCUController.class)
-@Import(SecurityConfig.class)
+@Import(WithApiToken.class)
 class MCUControllerTest {
 
     @Autowired

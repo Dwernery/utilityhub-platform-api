@@ -11,10 +11,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-import com.utilityhub.api.config.SecurityConfig;
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.utilityhub.api.service.LibraryService;
+import com.utilityhub.api.support.WithApiToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
  * database or AWS connection is needed and the tests run in milliseconds.
  */
 @WebMvcTest(LibraryController.class)
-@Import(SecurityConfig.class) // without this, Boot's default security would reject every request with 401
+@Import(WithApiToken.class)
 class LibraryControllerTest {
 
     @Autowired

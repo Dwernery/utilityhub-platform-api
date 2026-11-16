@@ -12,12 +12,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-import com.utilityhub.api.config.SecurityConfig;
 import com.utilityhub.api.db.entity.finance.TransactionType;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
 import com.utilityhub.api.service.FinanceService;
+import com.utilityhub.api.support.WithApiToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,7 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @WebMvcTest(FinanceController.class)
-@Import(SecurityConfig.class)
+@Import(WithApiToken.class)
 class FinanceControllerTest {
 
     @Autowired

@@ -9,11 +9,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-import com.utilityhub.api.config.SecurityConfig;
 import com.utilityhub.api.controller.FinanceController;
 import com.utilityhub.api.controller.LibraryController;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.service.LibraryService;
+import com.utilityhub.api.support.WithApiToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,7 +26,7 @@ import static org.mockito.BDDMockito.willThrow;
  * convenient way to trigger each kind of exception.
  */
 @WebMvcTest({LibraryController.class, FinanceController.class})
-@Import(SecurityConfig.class)
+@Import(WithApiToken.class)
 class GlobalExceptionHandlerTest {
 
     @Autowired

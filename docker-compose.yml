@@ -21,6 +21,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Every request must send this as "Authorization: Bearer <token>".
+      # Generate with: openssl rand -base64 32 (the app won't start without it).
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in .env (openssl rand -base64 32)}
     depends_on:
       - postgres
 

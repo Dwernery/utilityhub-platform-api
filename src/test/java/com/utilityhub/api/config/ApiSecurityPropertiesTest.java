@@ -32,7 +32,7 @@ class ApiSecurityPropertiesTest {
     void shortToken_stopsStartup_withAHelpfulMessage() {
         runner.withPropertyValues("api.token=password123")
                 .run(context ->
-                        assertThat(context).getFailure().rootCause().hasMessageContaining("openssl rand -base64 32"));
+                        assertThat(context).getFailure().rootCause().hasMessageContaining("openssl rand -hex 32"));
     }
 
     @Test

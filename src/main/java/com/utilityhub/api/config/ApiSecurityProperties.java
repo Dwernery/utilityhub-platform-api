@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
  *
  * @param token the shared secret every request must send as {@code Authorization: Bearer <token>}.
  *     In production it comes from the {@code API_TOKEN} environment variable; generate one
- *     with {@code openssl rand -base64 32}.
+ *     with {@code openssl rand -hex 32}.
  * @param corsAllowedOrigins browser origins allowed to call the API from another
  *     address. Empty in production: the web UI is served from the same address as the
  *     API, and the mobile app isn't a browser, so neither needs CORS.
@@ -22,7 +22,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "api")
 public record ApiSecurityProperties(
-        @NotBlank @Size(min = 32, message = "must be at least 32 characters (use: openssl rand -base64 32)")
+        @NotBlank @Size(min = 32, message = "must be at least 32 characters (use: openssl rand -hex 32)")
         String token,
 
         @DefaultValue List<String> corsAllowedOrigins) {

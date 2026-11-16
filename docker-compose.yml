@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:17
     container_name: book-postgres
+    # Come back after a reboot or crash (unless stopped on purpose with "docker compose stop").
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -10,10 +12,17 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    # "Healthy" once Postgres accepts connections, so the API can wait for it.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   api:
     build: .
     container_name: platform-api
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -22,10 +31,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       # Every request must send this as "Authorization: Bearer <token>".
-      # Generate with: openssl rand -base64 32 (the app won't start without it).
-      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in .env (openssl rand -base64 32)}
+      # Generate with: openssl rand -hex 32 (the app won't start without it).
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in .env (openssl rand -hex 32)}
+    # After a reboot, start only once the database is ready (not merely started).
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres-data:

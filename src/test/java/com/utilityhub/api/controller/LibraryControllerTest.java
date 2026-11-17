@@ -49,7 +49,6 @@ class LibraryControllerTest {
                 null,
                 null,
                 null,
-                "9780441013593",
                 null);
     }
 
@@ -72,7 +71,7 @@ class LibraryControllerTest {
                         .uri("/api/library/books")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                        {"title":"Dune","pages":412,"authorName":"Frank Herbert","isbn13":"9780441013593"}
+                        {"title":"Dune","pages":412,"authorName":"Frank Herbert"}
                         """))
                 .hasStatus(201)
                 .bodyJson()

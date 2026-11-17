@@ -133,16 +133,9 @@ class RequestValidationTest {
     // --- Library ---
 
     @Test
-    void createBook_invalidIsbn_isRejected() {
-        assertFieldError(send("POST", "/api/library/books", """
-                {"title":"Dune","pages":412,"authorName":"Frank Herbert","isbn13":"978-0441013593"}
-                """), "isbn13", "must be exactly 13 digits");
-    }
-
-    @Test
     void createBook_zeroPages_isRejected() {
         assertFieldError(send("POST", "/api/library/books", """
-                {"title":"Dune","pages":0,"authorName":"Frank Herbert","isbn13":"9780441013593"}
+                {"title":"Dune","pages":0,"authorName":"Frank Herbert"}
                 """), "pages", "must be greater than 0");
     }
 

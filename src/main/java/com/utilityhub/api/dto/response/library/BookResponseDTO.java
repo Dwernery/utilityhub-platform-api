@@ -15,5 +15,4 @@ public record BookResponseDTO(
         LocalDate endDate,
         Integer currentPage,
         Integer rating,
-        String isbn13,
         String s3Url) {}

@@ -66,7 +66,6 @@ class LibraryServicePatchTest {
         book.setTitle("Dune");
         book.setPages(412);
         book.setAuthor(herbert);
-        book.setIsbn13("9780441013593");
         book.setStatus(BookStatus.IN_PROGRESS);
         book.setStartDate(LocalDate.of(2026, 1, 1));
         book.setCurrentPage(100);
@@ -113,13 +112,6 @@ class LibraryServicePatchTest {
         book.setRating(4);
 
         assertThat(patch("{\"status\": \"IN_PROGRESS\"}").rating()).isEqualTo(4);
-    }
-
-    @Test
-    void bookWithoutIsbnCanStillBeEdited() {
-        book.setIsbn13(null);
-
-        assertThat(patch("{\"rating\": 5}").rating()).isEqualTo(5);
     }
 
     @Test

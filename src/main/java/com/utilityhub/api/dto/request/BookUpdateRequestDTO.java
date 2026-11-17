@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -27,10 +26,6 @@ public record BookUpdateRequestDTO(
         @NotNull @Positive Integer pages,
         @NotBlank @Size(max = 255) String authorName,
         @Size(max = 255) String seriesName,
-
-        @Pattern(regexp = "\\d{13}", message = "must be exactly 13 digits")
-        String isbn13,
-
         @NotNull BookStatus status,
         LocalDate startDate,
         LocalDate endDate,
@@ -43,7 +38,6 @@ public record BookUpdateRequestDTO(
                 book.getPages(),
                 book.getAuthor() != null ? book.getAuthor().getFullName() : null,
                 book.getSeries() != null ? book.getSeries().getName() : null,
-                book.getIsbn13(),
                 book.getStatus(),
                 book.getStartDate(),
                 book.getEndDate(),

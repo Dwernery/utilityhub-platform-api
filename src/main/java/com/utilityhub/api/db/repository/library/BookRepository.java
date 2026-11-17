@@ -23,7 +23,6 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
                     b.endDate,
                     b.currentPage,
                     b.rating,
-                    b.isbn13,
                     b.s3Url
                 )
                 FROM Book b

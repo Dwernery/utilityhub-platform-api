@@ -46,9 +46,6 @@ public class Book {
     @Column(name = "current_page")
     private Integer currentPage;
 
-    @Column(name = "isbn_13")
-    private String isbn13;
-
     @Column(name = "s3_url")
     private String s3Url;
 

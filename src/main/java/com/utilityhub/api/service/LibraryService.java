@@ -109,7 +109,6 @@ public class LibraryService {
         Book book = new Book();
         book.setTitle(newBook.title());
         book.setPages(newBook.pages());
-        book.setIsbn13(newBook.isbn13());
         book.setAuthor(findAuthor(newBook.authorName()));
         book.setSeries(findSeriesOrNull(newBook.seriesName()));
         book.setStatus(Book.BookStatus.UNREAD);
@@ -150,7 +149,6 @@ public class LibraryService {
 
         book.setTitle(update.title());
         book.setPages(update.pages());
-        book.setIsbn13(update.isbn13());
         book.setStatus(update.status());
         book.setStartDate(update.startDate());
         book.setEndDate(update.endDate());
@@ -219,7 +217,6 @@ public class LibraryService {
                 book.getEndDate(),
                 book.getCurrentPage(),
                 book.getRating(),
-                book.getIsbn13(),
                 book.getS3Url());
     }
 }

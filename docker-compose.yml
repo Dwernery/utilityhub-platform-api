@@ -30,9 +30,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      # Every request must send this as "Authorization: Bearer <token>".
-      # Generate with: openssl rand -hex 32 (the app won't start without it).
-      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in .env (openssl rand -hex 32)}
+      # The owner's password, as a bcrypt hash. Generate with scripts/hash-password.sh and
+      # put it in .env inside single quotes (OWNER_PASSWORD_HASH='$2y$...'), so the "$"s stay as they are.
+      API_PASSWORD_HASH: ${OWNER_PASSWORD_HASH:?Set OWNER_PASSWORD_HASH in .env (scripts/hash-password.sh)}
+      # Signs the session tokens. Changing it signs every device out.
+      API_SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env (openssl rand -hex 32)}
+      # Touch ID sign-in on the web: the site's host name (empty turns it off), and the
+      # passkeys registered with "Set up Touch ID" (comma-separated; remove one to revoke it).
+      API_PASSKEY_RP_ID: ${SITE_HOST:-}
+      API_PASSKEY_CREDENTIALS: ${PASSKEYS:-}
     # After a reboot, start only once the database is ready (not merely started).
     depends_on:
       postgres:

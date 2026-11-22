@@ -13,7 +13,7 @@ import com.utilityhub.api.controller.FinanceController;
 import com.utilityhub.api.controller.LibraryController;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.service.LibraryService;
-import com.utilityhub.api.support.WithApiToken;
+import com.utilityhub.api.support.WithSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,7 +26,7 @@ import static org.mockito.BDDMockito.willThrow;
  * convenient way to trigger each kind of exception.
  */
 @WebMvcTest({LibraryController.class, FinanceController.class})
-@Import(WithApiToken.class)
+@Import(WithSession.class)
 class GlobalExceptionHandlerTest {
 
     @Autowired

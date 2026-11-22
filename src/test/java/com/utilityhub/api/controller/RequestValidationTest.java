@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.service.LibraryService;
 import com.utilityhub.api.service.MCUService;
-import com.utilityhub.api.support.WithApiToken;
+import com.utilityhub.api.support.WithSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * message, and must never reach the service layer.
  */
 @WebMvcTest({FinanceController.class, LibraryController.class, MCUController.class})
-@Import(WithApiToken.class)
+@Import(WithSession.class)
 class RequestValidationTest {
 
     @Autowired
@@ -228,9 +228,12 @@ class RequestValidationTest {
 
     @Test
     void attachPoster_keyOutsidePosterFolder_isRejected() {
-        assertFieldError(send("POST", "/api/mcu/movies/1/poster", """
+        assertFieldError(
+                send("POST", "/api/mcu/movies/1/poster", """
                 {"s3Key":"books/secret.pdf"}
-                """), "s3Key", "must be a key from /api/mcu/poster-upload-url");
+                """),
+                "s3Key",
+                "must be a key from /api/mcu/poster-upload-url");
     }
 
     @Test

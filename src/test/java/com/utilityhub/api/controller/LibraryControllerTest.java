@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.utilityhub.api.service.LibraryService;
-import com.utilityhub.api.support.WithApiToken;
+import com.utilityhub.api.support.WithSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
  * database or AWS connection is needed and the tests run in milliseconds.
  */
 @WebMvcTest(LibraryController.class)
-@Import(WithApiToken.class)
+@Import(WithSession.class)
 class LibraryControllerTest {
 
     @Autowired
@@ -39,17 +39,7 @@ class LibraryControllerTest {
 
     private static BookResponseDTO dune() {
         return new BookResponseDTO(
-                1,
-                "Dune",
-                412,
-                BookStatus.UNREAD,
-                "Frank Herbert",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
+                1, "Dune", 412, BookStatus.UNREAD, "Frank Herbert", null, null, null, null, null, null);
     }
 
     @Test

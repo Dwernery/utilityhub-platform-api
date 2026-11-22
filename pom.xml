@@ -23,6 +23,8 @@
 		<springdoc.version>3.0.3</springdoc.version>
 		<spotless.version>3.11.0</spotless.version>
 		<palantir-java-format.version>2.103.0</palantir-java-format.version>
+		<!-- Passkey (WebAuthn) verification; the library Spring Security's own WebAuthn support uses. -->
+		<webauthn4j.version>0.29.1.RELEASE</webauthn4j.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -43,6 +45,16 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<!-- Signs and checks the session tokens (HS256 JWTs) and reads them from requests. -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.webauthn4j</groupId>
+			<artifactId>webauthn4j-core</artifactId>
+			<version>${webauthn4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -77,6 +89,13 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<!-- Software authenticator, so passkey tests run without a real device. -->
+			<groupId>com.webauthn4j</groupId>
+			<artifactId>webauthn4j-test</artifactId>
+			<version>${webauthn4j.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

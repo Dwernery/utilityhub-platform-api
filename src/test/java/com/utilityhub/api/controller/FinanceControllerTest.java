@@ -17,7 +17,7 @@ import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
 import com.utilityhub.api.service.FinanceService;
-import com.utilityhub.api.support.WithApiToken;
+import com.utilityhub.api.support.WithSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,7 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @WebMvcTest(FinanceController.class)
-@Import(WithApiToken.class)
+@Import(WithSession.class)
 class FinanceControllerTest {
 
     @Autowired

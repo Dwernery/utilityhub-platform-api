@@ -32,5 +32,5 @@ build/
 ### VS Code ###
 .vscode/
 
-# Server secrets (database password, API_TOKEN) read by docker compose. Never commit.
+# Server secrets (database password, OWNER_PASSWORD_HASH, SESSION_SECRET) read by docker compose. Never commit.
 .env

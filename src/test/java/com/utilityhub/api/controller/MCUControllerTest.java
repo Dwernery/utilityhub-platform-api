@@ -18,9 +18,9 @@ import com.utilityhub.api.dto.response.mcu.EpisodeResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MCUTrackerResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MovieResponseDTO;
 import com.utilityhub.api.dto.response.mcu.ShowResponseDTO;
-import com.utilityhub.api.service.S3Service;
 import com.utilityhub.api.service.MCUService;
-import com.utilityhub.api.support.WithApiToken;
+import com.utilityhub.api.service.S3Service;
+import com.utilityhub.api.support.WithSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,7 +30,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @WebMvcTest(MCUController.class)
-@Import(WithApiToken.class)
+@Import(WithSession.class)
 class MCUControllerTest {
 
     @Autowired
@@ -69,8 +69,15 @@ class MCUControllerTest {
     void createMovie_returnsCreatedMovie() {
         given(mcuService.createMovie(any()))
                 .willReturn(new MovieResponseDTO(
-                        40L, "movie:40", "Thunderbolts*", LocalDate.of(2025, 5, 2), 127, "Antiheroes.",
-                        WatchStatus.UNWATCHED, null, ContentType.MOVIE));
+                        40L,
+                        "movie:40",
+                        "Thunderbolts*",
+                        LocalDate.of(2025, 5, 2),
+                        127,
+                        "Antiheroes.",
+                        WatchStatus.UNWATCHED,
+                        null,
+                        ContentType.MOVIE));
 
         assertThat(mvc.post()
                         .uri("/api/mcu/movies")
@@ -91,8 +98,15 @@ class MCUControllerTest {
     void updateMovie_takesIdFromPath() {
         given(mcuService.updateMovie(eq(7L), any()))
                 .willReturn(new MovieResponseDTO(
-                        7L, "movie:7", "Werewolf by Night", LocalDate.of(2022, 10, 7), 53, "Monsters.",
-                        WatchStatus.WATCHED, null, ContentType.SPECIAL));
+                        7L,
+                        "movie:7",
+                        "Werewolf by Night",
+                        LocalDate.of(2022, 10, 7),
+                        53,
+                        "Monsters.",
+                        WatchStatus.WATCHED,
+                        null,
+                        ContentType.SPECIAL));
 
         assertThat(mvc.put()
                         .uri("/api/mcu/movies/7")
@@ -117,8 +131,14 @@ class MCUControllerTest {
     void createShowSeason_returnsSeasonWithNoEpisodes() {
         given(mcuService.createShowSeason(any()))
                 .willReturn(new ShowResponseDTO(
-                        15L, "show:15", "Daredevil: Born Again", 1, LocalDate.of(2025, 3, 4), "Matt Murdock returns.",
-                        null, List.of()));
+                        15L,
+                        "show:15",
+                        "Daredevil: Born Again",
+                        1,
+                        LocalDate.of(2025, 3, 4),
+                        "Matt Murdock returns.",
+                        null,
+                        List.of()));
 
         assertThat(mvc.post()
                         .uri("/api/mcu/shows")
@@ -142,7 +162,8 @@ class MCUControllerTest {
     @Test
     void createEpisode_takesShowIdFromPath() {
         given(mcuService.createEpisode(eq(15L), any()))
-                .willReturn(new EpisodeResponseDTO(200L, "episode:200", 1, "Heaven's Half Hour", 50, WatchStatus.UNWATCHED));
+                .willReturn(new EpisodeResponseDTO(
+                        200L, "episode:200", 1, "Heaven's Half Hour", 50, WatchStatus.UNWATCHED));
 
         assertThat(mvc.post()
                         .uri("/api/mcu/shows/15/episodes")
@@ -187,7 +208,8 @@ class MCUControllerTest {
 
     @Test
     void attachShowPoster_returnsPublicUrl() {
-        given(mcuService.attachShowPoster(15L, "mcu-posters/x-loki.jpg")).willReturn("https://bucket/mcu-posters/x-loki.jpg");
+        given(mcuService.attachShowPoster(15L, "mcu-posters/x-loki.jpg"))
+                .willReturn("https://bucket/mcu-posters/x-loki.jpg");
 
         assertThat(mvc.post()
                         .uri("/api/mcu/shows/15/poster")

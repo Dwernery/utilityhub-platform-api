@@ -12,8 +12,9 @@
 #   UI_DIR    the web UI checkout                (default: UI_DIR in .env, else a sibling
 #             folder named utilityhub-ui or utility-hub-ui)
 #   WEB_ROOT  the folder nginx serves            (default: /var/www/utility-hub)
-# Read from $API_DIR/.env: API_TOKEN (required for the API check) and, optionally,
-# SITE_HOST (e.g. example.com) to check the public site at the end.
+# Read from $API_DIR/.env: optionally SITE_HOST (e.g. example.com) to check the public
+# site at the end. (The API's own settings in .env, such as OWNER_PASSWORD_HASH and
+# SESSION_SECRET, are read by docker compose, not by this script.)
 
 set -euo pipefail
 
@@ -68,10 +69,6 @@ deploy_api() {
   step "API: rebuilding and restarting"
   (cd "$API_DIR" && docker compose up -d --build)
 
-  local token
-  token="$(env_value API_TOKEN)"
-  [ -n "$token" ] || fail "API_TOKEN is missing from $API_DIR/.env"
-
   step "API: waiting for it to answer"
   local status="" i
   for i in $(seq 1 60); do
@@ -81,12 +78,15 @@ deploy_api() {
   done
   if [ "$status" != "401" ]; then
     (cd "$API_DIR" && docker compose logs --tail=40 api) || true
-    fail "API didn't come up with the token check on (last status: ${status:-none})"
+    fail "API didn't come up with sign-in required (last status: ${status:-none})"
   fi
 
-  status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$API_URL/api/library/books")"
-  [ "$status" = "200" ] || fail "API rejected the token from .env (status $status)"
-  echo "API is up: no token → 401, token → 200"
+  # An empty sign-in is refused as invalid (400), which shows the sign-in endpoint is
+  # reachable without needing the password here.
+  status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' \
+    "$API_URL/api/auth/login")"
+  [ "$status" = "400" ] || fail "The sign-in endpoint isn't answering as expected (status $status)"
+  echo "API is up: no session → 401, sign-in endpoint → 400 for an empty request"
   (cd "$API_DIR" && docker compose ps)
 }
 

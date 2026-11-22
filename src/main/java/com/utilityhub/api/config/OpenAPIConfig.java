@@ -12,7 +12,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 @Configuration
 public class OpenAPIConfig {
 
-    private static final String BEARER = "apiToken";
+    private static final String BEARER = "sessionToken";
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -21,7 +21,8 @@ public class OpenAPIConfig {
                         .title("Utility Hub Platform API")
                         .version("1.0")
                         .description("API documentation for the Utility Hub Platform API"))
-                // Every endpoint needs the API token; this adds Swagger UI's "Authorize" button.
+                // Endpoints need a session token (from POST /api/auth/login with X-Client: mobile);
+                // this adds Swagger UI's "Authorize" button.
                 .components(new Components()
                         .addSecuritySchemes(
                                 BEARER,

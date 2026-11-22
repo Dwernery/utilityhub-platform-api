@@ -20,6 +20,7 @@ import com.utilityhub.api.dto.request.AccountBalanceUpdateRequestDTO;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
+import com.utilityhub.api.dto.request.TransactionCreateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
@@ -83,10 +84,22 @@ public class FinanceController {
         return financeService.getAllTransactions();
     }
 
+    @PostMapping("/transactions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransactionResponseDTO createTransaction(@Valid @RequestBody TransactionCreateRequestDTO request) {
+        return financeService.createTransaction(request);
+    }
+
     @PutMapping("/transactions/{id}")
     public TransactionResponseDTO updateTransaction(
             @PathVariable Integer id, @Valid @RequestBody TransactionUpdateRequestDTO request) {
         return financeService.editTransaction(id, request);
+    }
+
+    @DeleteMapping("/transactions/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTransaction(@PathVariable Integer id) {
+        financeService.deleteTransaction(id);
     }
 
     /** Bulk action: marks every transaction as unpaid (e.g. at the start of a month). */

@@ -29,6 +29,7 @@ import com.utilityhub.api.db.repository.finance.TransactionRepository;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
+import com.utilityhub.api.dto.request.TransactionCreateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountBalanceResponseDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
@@ -210,6 +211,20 @@ public class FinanceService {
     }
 
     @Transactional
+    public TransactionResponseDTO createTransaction(TransactionCreateRequestDTO request) {
+        Transaction transaction = new Transaction();
+        transaction.setName(request.name().trim());
+        transaction.setTransactionType(request.transactionType());
+        transaction.setAmount(request.amount());
+        transaction.setPaid(Boolean.TRUE.equals(request.paid()));
+        transaction.setCash(Boolean.TRUE.equals(request.cash()));
+        Transaction saved = transactionRepository.save(transaction);
+
+        log.info("Created {} transaction id={}", saved.getTransactionType(), saved.getId());
+        return toTransactionDTO(saved);
+    }
+
+    @Transactional
     public TransactionResponseDTO editTransaction(Integer id, TransactionUpdateRequestDTO request) {
         Transaction transaction =
                 transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
@@ -221,6 +236,14 @@ public class FinanceService {
         Transaction saved = transactionRepository.save(transaction);
         log.info("Updated transaction id={}", id);
         return toTransactionDTO(saved);
+    }
+
+    @Transactional
+    public void deleteTransaction(Integer id) {
+        Transaction transaction =
+                transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
+        transactionRepository.delete(transaction);
+        log.info("Deleted transaction id={}", id);
     }
 
     @Transactional

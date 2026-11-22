@@ -82,6 +82,33 @@ class FinanceControllerTest {
     }
 
     @Test
+    void createTransaction_returnsCreatedTransaction() {
+        given(financeService.createTransaction(any()))
+                .willReturn(new TransactionResponseDTO(
+                        8, "Gym", TransactionType.EXPENSE, new BigDecimal("45.00"), false, false));
+
+        assertThat(mvc.post()
+                        .uri("/api/finance/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"name":"Gym","transactionType":"EXPENSE","amount":45.00}
+                        """))
+                .hasStatus(201)
+                .bodyJson()
+                .extractingPath("$.id")
+                .isEqualTo(8);
+
+        verify(financeService).createTransaction(argThat(r -> r.transactionType() == TransactionType.EXPENSE));
+    }
+
+    @Test
+    void deleteTransaction_takesIdFromPath() {
+        assertThat(mvc.delete().uri("/api/finance/transactions/8")).hasStatus(204);
+
+        verify(financeService).deleteTransaction(8);
+    }
+
+    @Test
     void updateTransaction_takesIdFromPathAndReturnsUpdatedTransaction() {
         given(financeService.editTransaction(eq(5), any()))
                 .willReturn(new TransactionResponseDTO(

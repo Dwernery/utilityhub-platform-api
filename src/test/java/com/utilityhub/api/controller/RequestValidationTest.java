@@ -95,6 +95,20 @@ class RequestValidationTest {
     }
 
     @Test
+    void createTransaction_missingType_isRejected() {
+        assertFieldError(send("POST", "/api/finance/transactions", """
+                {"name":"Gym","amount":45}
+                """), "transactionType", "must not be null");
+    }
+
+    @Test
+    void createTransaction_blankName_isRejected() {
+        assertFieldError(send("POST", "/api/finance/transactions", """
+                {"name":" ","transactionType":"INCOME","amount":45}
+                """), "name", "must not be blank");
+    }
+
+    @Test
     void createAccount_unknownCategory_listsAllowedValues() {
         assertFieldError(send("POST", "/api/finance/accounts", """
                 {"accountName":"Checking","accountType":"Bank","category":"SAVINGS"}

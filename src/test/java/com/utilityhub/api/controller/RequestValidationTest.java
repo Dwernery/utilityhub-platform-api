@@ -190,4 +190,54 @@ class RequestValidationTest {
                 "status",
                 "must be one of [UNWATCHED, IN_PROGRESS, WATCHED]");
     }
+
+    @Test
+    void createMovie_missingRuntimeAndSynopsis_areRejected() {
+        assertThat(send("POST", "/api/mcu/movies", """
+                {"title":"Thunderbolts*","premiereDate":"2025-05-02","domain":"Phase 5","special":false}
+                """))
+                .hasStatus(400)
+                .bodyJson()
+                .satisfies(body -> {
+                    assertThat(body).extractingPath("$.errors.runtime").isEqualTo("must not be null");
+                    assertThat(body).extractingPath("$.errors.synopsis").isEqualTo("must not be blank");
+                });
+    }
+
+    @Test
+    void createMovie_blankDomain_isRejected() {
+        assertFieldError(send("POST", "/api/mcu/movies", """
+                {"title":"Thunderbolts*","premiereDate":"2025-05-02","runtime":127,
+                 "synopsis":"A team of antiheroes.","domain":" ","special":false}
+                """), "domain", "must not be blank");
+    }
+
+    @Test
+    void createShowSeason_zeroSeason_isRejected() {
+        assertFieldError(send("POST", "/api/mcu/shows", """
+                {"title":"Loki","season":0,"premiereDate":"2021-06-09","synopsis":"Variant.","domain":"Phase 4"}
+                """), "season", "must be greater than 0");
+    }
+
+    @Test
+    void createEpisode_missingTitle_isRejected() {
+        assertFieldError(send("POST", "/api/mcu/shows/3/episodes", """
+                {"episodeNumber":1,"runtime":50}
+                """), "title", "must not be blank");
+    }
+
+    @Test
+    void attachPoster_keyOutsidePosterFolder_isRejected() {
+        assertFieldError(send("POST", "/api/mcu/movies/1/poster", """
+                {"s3Key":"books/secret.pdf"}
+                """), "s3Key", "must be a key from /api/mcu/poster-upload-url");
+    }
+
+    @Test
+    void posterUploadUrl_nonImageType_isRejected() {
+        assertThat(mvc.get()
+                        .uri("/api/mcu/poster-upload-url?fileName=a.pdf&fileType=application/pdf")
+                        .exchange())
+                .hasStatus(400);
+    }
 }

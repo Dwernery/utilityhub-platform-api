@@ -24,8 +24,13 @@ public record AwsProperties(
         String profileName,
         @Valid @NotNull S3 s3) {
 
-    /** @param presignedUrlExpiration plain numbers are minutes; "30s" or "1h" also work */
+    /**
+     * @param bucketName Library covers and files
+     * @param mcuBucketName MCU posters, kept apart from the Library
+     * @param presignedUrlExpiration plain numbers are minutes; "30s" or "1h" also work
+     */
     public record S3(
             @NotBlank String bucketName,
+            @NotBlank String mcuBucketName,
             @NotNull @DurationUnit(ChronoUnit.MINUTES) Duration presignedUrlExpiration) {}
 }

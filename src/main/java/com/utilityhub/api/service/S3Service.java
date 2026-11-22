@@ -22,10 +22,17 @@ public class S3Service {
 
     /** A short-lived URL the browser can PUT the file to directly, so uploads never pass through this API. */
     public S3PresignedUrlResponse generatePresignedUploadUrl(String fileName, String fileType) {
-        String s3Key = fileName;
+        return generatePresignedUploadUrl(aws.s3().bucketName(), fileName, fileType);
+    }
 
+    /** Same, for an MCU poster in the MCU bucket. */
+    public S3PresignedUrlResponse generateMcuPosterUploadUrl(String s3Key, String fileType) {
+        return generatePresignedUploadUrl(aws.s3().mcuBucketName(), s3Key, fileType);
+    }
+
+    private S3PresignedUrlResponse generatePresignedUploadUrl(String bucket, String s3Key, String fileType) {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(aws.s3().bucketName())
+                .bucket(bucket)
                 .key(s3Key)
                 .contentType(fileType)
                 .build();
@@ -41,7 +48,16 @@ public class S3Service {
 
     /** The object's permanent (non-presigned) URL. */
     public String getPublicS3Url(String s3Key) {
-        return "https://%s.s3.%s.amazonaws.com/%s".formatted(aws.s3().bucketName(), aws.region(), s3Key);
+        return publicUrl(aws.s3().bucketName(), s3Key);
+    }
+
+    /** The permanent URL of an MCU poster. */
+    public String getMcuPosterUrl(String s3Key) {
+        return publicUrl(aws.s3().mcuBucketName(), s3Key);
+    }
+
+    private String publicUrl(String bucket, String s3Key) {
+        return "https://%s.s3.%s.amazonaws.com/%s".formatted(bucket, aws.region(), s3Key);
     }
 
     public record S3PresignedUrlResponse(String presignedUrl, String s3Key) {}

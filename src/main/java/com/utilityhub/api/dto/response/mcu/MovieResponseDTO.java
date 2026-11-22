@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import com.utilityhub.api.db.entity.mcu.WatchStatus;
 
 public record MovieResponseDTO(
+        Long id,
         String globalId,
         String title,
         LocalDate premiereDate,

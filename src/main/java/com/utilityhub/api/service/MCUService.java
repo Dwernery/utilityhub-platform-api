@@ -29,7 +29,6 @@ import com.utilityhub.api.dto.response.mcu.DomainResponseDTO;
 import com.utilityhub.api.dto.response.mcu.EpisodeResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MCUTrackerResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MovieResponseDTO;
-import com.utilityhub.api.dto.response.mcu.SeasonResponseDTO;
 import com.utilityhub.api.dto.response.mcu.ShowResponseDTO;
 import com.utilityhub.api.exception.InvalidRequestException;
 import com.utilityhub.api.exception.ResourceNotFoundException;
@@ -95,6 +94,7 @@ public class MCUService {
 
     private MovieResponseDTO convertMovieToDTO(Movie movie) {
         return new MovieResponseDTO(
+                movie.getId(),
                 "movie:" + movie.getId(),
                 movie.getTitle(),
                 movie.getPremiereDate(),
@@ -102,20 +102,20 @@ public class MCUService {
                 movie.getSynopsis(),
                 movie.getStatus(),
                 movie.getS3Url(),
-                Boolean.TRUE.equals(movie.getIsSpecialPres()) ? ContentType.SPECIAL : ContentType.MOVIE);
+                Boolean.TRUE.equals(movie.getSpecial()) ? ContentType.SPECIAL : ContentType.MOVIE);
     }
 
-    /** Each Show row is one season, so the DTO always has exactly one season. */
+    /** Each Show row is one season. */
     private ShowResponseDTO convertShowToDTO(Show show, List<Episode> episodes) {
-        List<EpisodeResponseDTO> episodeDTOs =
-                episodes.stream().map(this::convertEpisodeToDTO).toList();
         return new ShowResponseDTO(
+                show.getId(),
                 "show:" + show.getId(),
                 show.getTitle(),
+                show.getSeason(),
                 show.getPremiereDate(),
                 show.getSynopsis(),
                 show.getS3Url(),
-                List.of(new SeasonResponseDTO(show.getSeason(), episodeDTOs)));
+                episodes.stream().map(this::convertEpisodeToDTO).toList());
     }
 
     private EpisodeResponseDTO convertEpisodeToDTO(Episode episode) {
@@ -192,7 +192,7 @@ public class MCUService {
         movie.setRuntime(request.runtime());
         movie.setSynopsis(request.synopsis().trim());
         movie.setDomain(request.domain().trim());
-        movie.setIsSpecialPres(request.special());
+        movie.setSpecial(request.special());
     }
 
     private Movie findMovie(Long id) {

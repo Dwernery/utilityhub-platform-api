@@ -73,7 +73,7 @@ class MCUServiceTest {
         verify(movieRepository).save(argThat(m -> m.getStatus() == WatchStatus.UNWATCHED
                 && m.getTitle().equals("Thunderbolts*")
                 && m.getDomain().equals("Phase 5")
-                && !m.getIsSpecialPres()));
+                && !m.getSpecial()));
     }
 
     @Test

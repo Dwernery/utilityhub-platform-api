@@ -17,7 +17,6 @@ import com.utilityhub.api.dto.response.mcu.DomainResponseDTO;
 import com.utilityhub.api.dto.response.mcu.EpisodeResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MCUTrackerResponseDTO;
 import com.utilityhub.api.dto.response.mcu.MovieResponseDTO;
-import com.utilityhub.api.dto.response.mcu.SeasonResponseDTO;
 import com.utilityhub.api.dto.response.mcu.ShowResponseDTO;
 import com.utilityhub.api.service.S3Service;
 import com.utilityhub.api.service.MCUService;
@@ -70,7 +69,7 @@ class MCUControllerTest {
     void createMovie_returnsCreatedMovie() {
         given(mcuService.createMovie(any()))
                 .willReturn(new MovieResponseDTO(
-                        "movie:40", "Thunderbolts*", LocalDate.of(2025, 5, 2), 127, "Antiheroes.",
+                        40L, "movie:40", "Thunderbolts*", LocalDate.of(2025, 5, 2), 127, "Antiheroes.",
                         WatchStatus.UNWATCHED, null, ContentType.MOVIE));
 
         assertThat(mvc.post()
@@ -92,7 +91,7 @@ class MCUControllerTest {
     void updateMovie_takesIdFromPath() {
         given(mcuService.updateMovie(eq(7L), any()))
                 .willReturn(new MovieResponseDTO(
-                        "movie:7", "Werewolf by Night", LocalDate.of(2022, 10, 7), 53, "Monsters.",
+                        7L, "movie:7", "Werewolf by Night", LocalDate.of(2022, 10, 7), 53, "Monsters.",
                         WatchStatus.WATCHED, null, ContentType.SPECIAL));
 
         assertThat(mvc.put()
@@ -118,8 +117,8 @@ class MCUControllerTest {
     void createShowSeason_returnsSeasonWithNoEpisodes() {
         given(mcuService.createShowSeason(any()))
                 .willReturn(new ShowResponseDTO(
-                        "show:15", "Daredevil: Born Again", LocalDate.of(2025, 3, 4), "Matt Murdock returns.", null,
-                        List.of(new SeasonResponseDTO(1, List.of()))));
+                        15L, "show:15", "Daredevil: Born Again", 1, LocalDate.of(2025, 3, 4), "Matt Murdock returns.",
+                        null, List.of()));
 
         assertThat(mvc.post()
                         .uri("/api/mcu/shows")
@@ -130,7 +129,7 @@ class MCUControllerTest {
                         """))
                 .hasStatus(201)
                 .bodyJson()
-                .extractingPath("$.seasons[0].seasonNumber")
+                .extractingPath("$.seasonNumber")
                 .isEqualTo(1);
     }
 

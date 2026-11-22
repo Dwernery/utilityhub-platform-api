@@ -39,5 +39,6 @@ public class Movie {
     private String domain;
 
     @Column(name = "is_special_pres")
-    private Boolean isSpecialPres;
+    /** A "Marvel Special Presentation" (e.g. Werewolf by Night) rather than a feature film. */
+    private Boolean special;
 }

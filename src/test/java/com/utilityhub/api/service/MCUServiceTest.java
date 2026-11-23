@@ -70,10 +70,11 @@ class MCUServiceTest {
         service.createMovie(new MovieRequestDTO(
                 "  Thunderbolts*  ", LocalDate.of(2025, 5, 2), 127, " Antiheroes. ", " Phase 5 ", false));
 
-        verify(movieRepository).save(argThat(m -> m.getStatus() == WatchStatus.UNWATCHED
-                && m.getTitle().equals("Thunderbolts*")
-                && m.getDomain().equals("Phase 5")
-                && !m.getSpecial()));
+        verify(movieRepository)
+                .save(argThat(m -> m.getStatus() == WatchStatus.UNWATCHED
+                        && m.getTitle().equals("Thunderbolts*")
+                        && m.getDomain().equals("Phase 5")
+                        && !m.getSpecial()));
     }
 
     @Test
@@ -85,7 +86,8 @@ class MCUServiceTest {
         given(movieRepository.findById(7L)).willReturn(Optional.of(movie));
 
         var dto = service.updateMovie(
-                7L, new MovieRequestDTO("Werewolf by Night", LocalDate.of(2022, 10, 7), 53, "Monsters.", "Phase 4", true));
+                7L,
+                new MovieRequestDTO("Werewolf by Night", LocalDate.of(2022, 10, 7), 53, "Monsters.", "Phase 4", true));
 
         assertThat(dto.status()).isEqualTo(WatchStatus.WATCHED);
         assertThat(dto.s3Url()).isEqualTo("https://bucket/poster.jpg");
@@ -94,7 +96,8 @@ class MCUServiceTest {
 
     @Test
     void createShowSeason_duplicateTitleAndSeason_isRejected() {
-        given(showRepository.findFirstByTitleIgnoreCaseAndSeason("Loki", 2)).willReturn(Optional.of(show(9, "Loki", 2)));
+        given(showRepository.findFirstByTitleIgnoreCaseAndSeason("Loki", 2))
+                .willReturn(Optional.of(show(9, "Loki", 2)));
 
         assertThatThrownBy(() -> service.createShowSeason(seasonRequest("Loki", 2)))
                 .isInstanceOf(InvalidRequestException.class)
@@ -162,7 +165,8 @@ class MCUServiceTest {
     void posterUploadUrl_usesUniqueKeyUnderPosterFolder() {
         service.generatePosterUploadUrl("Loki S2 (final).jpg", "image/jpeg");
 
-        verify(s3Service).generateMcuPosterUploadUrl(
-                argThat(key -> key.matches("mcu-posters/[0-9a-f-]{36}-Loki_S2__final_\\.jpg")), any());
+        verify(s3Service)
+                .generateMcuPosterUploadUrl(
+                        argThat(key -> key.matches("mcu-posters/[0-9a-f-]{36}-Loki_S2__final_\\.jpg")), any());
     }
 }

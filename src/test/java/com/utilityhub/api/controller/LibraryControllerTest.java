@@ -41,7 +41,7 @@ class LibraryControllerTest {
 
     private static BookResponseDTO dune() {
         return new BookResponseDTO(
-                1, "Dune", 412, BookStatus.UNREAD, "Frank Herbert", null, null, null, null, null, null);
+                1, "Dune", 412, BookStatus.UNREAD, "Frank Herbert", null, null, null, null, null, null, null);
     }
 
     @Test
@@ -119,9 +119,15 @@ class LibraryControllerTest {
                 .willReturn(new LibraryService.Created<>(new AuthorResponseDTO(7, "Brandon Sanderson"), false));
         String body = "{\"fullName\":\"brandon sanderson\"}";
 
-        assertThat(mvc.post().uri("/api/library/authors").contentType(MediaType.APPLICATION_JSON).content(body))
+        assertThat(mvc.post()
+                        .uri("/api/library/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .hasStatus(201);
-        assertThat(mvc.post().uri("/api/library/authors").contentType(MediaType.APPLICATION_JSON).content(body))
+        assertThat(mvc.post()
+                        .uri("/api/library/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .hasStatusOk()
                 .bodyJson()
                 .extractingPath("$.fullName")
@@ -172,5 +178,27 @@ class LibraryControllerTest {
         assertThat(mvc.delete().uri("/api/library/goals/2026")).hasStatus(204);
 
         verify(libraryService).deleteGoal(2026);
+    }
+
+    @Test
+    void createBook_rejectsSeriesPositionBelowOneOrWithDecimals() {
+        given(libraryService.createBook(any())).willReturn(dune());
+        var statuses = new java.util.LinkedHashMap<String, Integer>();
+        for (String position : new String[] {"0", "-1", "2.5", "2"}) {
+            var result = mvc.post()
+                    .uri("/api/library/books")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"Dune\",\"pages\":412,\"authorName\":\"Frank Herbert\","
+                            + "\"seriesName\":\"Dune\",\"seriesPosition\":" + position + "}")
+                    .exchange();
+            statuses.put(position, result.getResponse().getStatus());
+        }
+
+        assertThat(statuses)
+                .containsExactly(
+                        java.util.Map.entry("0", 400),
+                        java.util.Map.entry("-1", 400),
+                        java.util.Map.entry("2.5", 400),
+                        java.util.Map.entry("2", 201));
     }
 }

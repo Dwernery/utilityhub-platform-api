@@ -160,6 +160,8 @@ public class LibraryService {
         book.setPages(newBook.pages());
         book.setAuthor(findAuthor(newBook.authorName()));
         book.setSeries(findSeriesOrNull(newBook.seriesName()));
+        // A number only means something within a series.
+        book.setSeriesPosition(book.getSeries() != null ? newBook.seriesPosition() : null);
         book.setStatus(Book.BookStatus.UNREAD);
 
         Book saved = bookRepository.save(book);
@@ -213,6 +215,8 @@ public class LibraryService {
         if (!Objects.equals(currentSeries, seriesName)) {
             book.setSeries(findSeriesOrNull(seriesName));
         }
+        // A number only means something within a series: leaving the series clears it.
+        book.setSeriesPosition(book.getSeries() != null ? update.seriesPosition() : null);
 
         Book saved = bookRepository.save(book);
         log.info("Updated book id={} fields={}", id, patch.keySet());
@@ -274,6 +278,7 @@ public class LibraryService {
                 book.getStatus(),
                 book.getAuthor() != null ? book.getAuthor().getFullName() : null,
                 book.getSeries() != null ? book.getSeries().getName() : null,
+                book.getSeriesPosition(),
                 book.getStartDate(),
                 book.getEndDate(),
                 book.getCurrentPage(),

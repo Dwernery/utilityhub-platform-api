@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import com.utilityhub.api.db.entity.library.Author;
 import com.utilityhub.api.db.entity.library.Book;
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
+import com.utilityhub.api.db.entity.library.Series;
 import com.utilityhub.api.db.repository.library.AuthorRepository;
 import com.utilityhub.api.db.repository.library.BookRepository;
 import com.utilityhub.api.db.repository.library.ReadingGoalRepository;
@@ -125,7 +126,8 @@ class LibraryServicePatchTest {
 
     @Test
     void unknownAuthorIsNotFound() {
-        given(authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc("Nobody")).willReturn(Optional.empty());
+        given(authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc("Nobody"))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> patch("{\"authorName\": \"Nobody\"}")).isInstanceOf(ResourceNotFoundException.class);
     }
@@ -190,6 +192,45 @@ class LibraryServicePatchTest {
         given(authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc("brandon sanderson"))
                 .willReturn(Optional.of(sanderson));
 
-        assertThat(patch("{\"authorName\": \" brandon sanderson \"}").authorName()).isEqualTo("Brandon Sanderson");
+        assertThat(patch("{\"authorName\": \" brandon sanderson \"}").authorName())
+                .isEqualTo("Brandon Sanderson");
+    }
+
+    @Test
+    void seriesPositionIsSavedWithASeries() {
+        Series dune = new Series();
+        dune.setName("Dune Chronicles");
+        given(seriesRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Dune Chronicles"))
+                .willReturn(Optional.of(dune));
+
+        BookResponseDTO result = patch("{\"seriesName\": \"Dune Chronicles\", \"seriesPosition\": 1}");
+
+        assertThat(result.seriesName()).isEqualTo("Dune Chronicles");
+        assertThat(result.seriesPosition()).isEqualTo(1);
+    }
+
+    @Test
+    void leavingTheSeriesClearsItsPosition() {
+        Series dune = new Series();
+        dune.setName("Dune Chronicles");
+        book.setSeries(dune);
+        book.setSeriesPosition(1);
+
+        assertThat(patch("{\"seriesName\": null}").seriesPosition()).isNull();
+    }
+
+    @Test
+    void positionWithoutASeriesIsDropped() {
+        assertThat(patch("{\"seriesPosition\": 3}").seriesPosition()).isNull();
+    }
+
+    @Test
+    void positionBelowOneIsRejected() {
+        assertThatThrownBy(() -> patch("{\"seriesPosition\": 0}")).isInstanceOf(ConstraintViolationException.class);
+    }
+
+    @Test
+    void decimalPositionIsRejected() {
+        assertThatThrownBy(() -> patch("{\"seriesPosition\": 2.5}")).isInstanceOf(MismatchedInputException.class);
     }
 }

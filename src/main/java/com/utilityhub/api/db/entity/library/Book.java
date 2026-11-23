@@ -52,6 +52,10 @@ public class Book {
     @Column(name = "rating")
     private Integer rating;
 
+    /** The book's number in its series (1, 2, 3…); null without a series or when unknown. */
+    @Column(name = "series_position")
+    private Integer seriesPosition;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private Author author;

@@ -19,6 +19,7 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
                     b.status,
                     b.author.fullName,
                     b.series.name,
+                    b.seriesPosition,
                     b.startDate,
                     b.endDate,
                     b.currentPage,

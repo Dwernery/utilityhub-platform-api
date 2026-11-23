@@ -13,6 +13,9 @@ import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.utilityhub.api.db.entity.library.Book;
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
+import com.utilityhub.api.dto.json.WholeNumberDeserializer;
+
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * The editable state of a book. A PATCH request is merged into the book's
@@ -26,6 +29,10 @@ public record BookUpdateRequestDTO(
         @NotNull @Positive Integer pages,
         @NotBlank @Size(max = 255) String authorName,
         @Size(max = 255) String seriesName,
+        /** The book's number in its series: a whole number from 1. Cleared without a series. */
+        @Positive @Max(999) @JsonDeserialize(using = WholeNumberDeserializer.class)
+        Integer seriesPosition,
+
         @NotNull BookStatus status,
         LocalDate startDate,
         LocalDate endDate,
@@ -38,6 +45,7 @@ public record BookUpdateRequestDTO(
                 book.getPages(),
                 book.getAuthor() != null ? book.getAuthor().getFullName() : null,
                 book.getSeries() != null ? book.getSeries().getName() : null,
+                book.getSeriesPosition(),
                 book.getStatus(),
                 book.getStartDate(),
                 book.getEndDate(),

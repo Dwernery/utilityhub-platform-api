@@ -11,6 +11,7 @@ public record BookResponseDTO(
         BookStatus status,
         String authorName,
         String seriesName,
+        Integer seriesPosition,
         LocalDate startDate,
         LocalDate endDate,
         Integer currentPage,

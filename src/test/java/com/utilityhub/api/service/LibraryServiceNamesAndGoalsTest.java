@@ -91,7 +91,8 @@ class LibraryServiceNamesAndGoalsTest {
         Series existing = new Series();
         existing.setId(4);
         existing.setName("Mistborn");
-        given(seriesRepository.findFirstByNameIgnoreCaseOrderByIdAsc("MISTBORN")).willReturn(Optional.of(existing));
+        given(seriesRepository.findFirstByNameIgnoreCaseOrderByIdAsc("MISTBORN"))
+                .willReturn(Optional.of(existing));
 
         var result = service.createSeries(new SeriesCreateRequestDTO("MISTBORN"));
 
@@ -110,7 +111,8 @@ class LibraryServiceNamesAndGoalsTest {
         existing.setYear(2026);
         existing.setTarget(25);
         given(goalRepository.findById(2026)).willReturn(Optional.of(existing));
-        assertThat(service.setGoal(2026, new ReadingGoalRequestDTO(30)).target()).isEqualTo(30);
+        assertThat(service.setGoal(2026, new ReadingGoalRequestDTO(30)).target())
+                .isEqualTo(30);
         assertThat(existing.getTarget()).isEqualTo(30);
     }
 

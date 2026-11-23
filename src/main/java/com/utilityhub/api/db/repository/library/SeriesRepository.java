@@ -8,5 +8,9 @@ import com.utilityhub.api.db.entity.library.Series;
 
 public interface SeriesRepository extends JpaRepository<Series, Integer> {
 
-    Optional<Series> findByName(String seriesName);
+    /**
+     * Case-insensitive, and the oldest one wins, so a name keeps working even if duplicates
+     * were created before names were unique.
+     */
+    Optional<Series> findFirstByNameIgnoreCaseOrderByIdAsc(String name);
 }

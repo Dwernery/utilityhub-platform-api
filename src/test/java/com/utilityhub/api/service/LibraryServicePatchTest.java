@@ -14,6 +14,7 @@ import com.utilityhub.api.db.entity.library.Book;
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
 import com.utilityhub.api.db.repository.library.AuthorRepository;
 import com.utilityhub.api.db.repository.library.BookRepository;
+import com.utilityhub.api.db.repository.library.ReadingGoalRepository;
 import com.utilityhub.api.db.repository.library.SeriesRepository;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.utilityhub.api.exception.InvalidRequestException;
@@ -55,6 +56,7 @@ class LibraryServicePatchTest {
                 bookRepository,
                 authorRepository,
                 seriesRepository,
+                mock(ReadingGoalRepository.class),
                 mock(S3Service.class),
                 json,
                 Validation.buildDefaultValidatorFactory().getValidator());
@@ -118,12 +120,12 @@ class LibraryServicePatchTest {
     void unchangedAuthorIsNotLookedUpAgain() {
         patch("{\"authorName\": \"Frank Herbert\", \"rating\": 4}");
 
-        verify(authorRepository, never()).findByFullName(any());
+        verify(authorRepository, never()).findFirstByFullNameIgnoreCaseOrderByIdAsc(any());
     }
 
     @Test
     void unknownAuthorIsNotFound() {
-        given(authorRepository.findByFullName("Nobody")).willReturn(Optional.empty());
+        given(authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc("Nobody")).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> patch("{\"authorName\": \"Nobody\"}")).isInstanceOf(ResourceNotFoundException.class);
     }
@@ -179,5 +181,15 @@ class LibraryServicePatchTest {
         assertThatThrownBy(() -> patch("{\"rating\": 0}"));
 
         verify(bookRepository, never()).save(any());
+    }
+
+    @Test
+    void authorIsFoundIgnoringCaseAndSpaces() {
+        Author sanderson = new Author();
+        sanderson.setFullName("Brandon Sanderson");
+        given(authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc("brandon sanderson"))
+                .willReturn(Optional.of(sanderson));
+
+        assertThat(patch("{\"authorName\": \" brandon sanderson \"}").authorName()).isEqualTo("Brandon Sanderson");
     }
 }

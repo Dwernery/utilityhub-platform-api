@@ -8,5 +8,9 @@ import com.utilityhub.api.db.entity.library.Author;
 
 public interface AuthorRepository extends JpaRepository<Author, Integer> {
 
-    Optional<Author> findByFullName(String authorName);
+    /**
+     * Case-insensitive, and the oldest one wins, so a name keeps working even if duplicates
+     * were created before names were unique.
+     */
+    Optional<Author> findFirstByFullNameIgnoreCaseOrderByIdAsc(String fullName);
 }

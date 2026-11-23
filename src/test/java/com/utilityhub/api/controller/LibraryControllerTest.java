@@ -12,7 +12,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 import com.utilityhub.api.db.entity.library.Book.BookStatus;
+import com.utilityhub.api.dto.response.library.AuthorResponseDTO;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
+import com.utilityhub.api.dto.response.library.ReadingGoalResponseDTO;
 import com.utilityhub.api.service.LibraryService;
 import com.utilityhub.api.support.WithSession;
 
@@ -108,5 +110,67 @@ class LibraryControllerTest {
         assertThat(mvc.delete().uri("/api/library/books/1")).hasStatus(204);
 
         verify(libraryService).deleteBook(1);
+    }
+
+    @Test
+    void createAuthor_newIs201_existingIs200() {
+        given(libraryService.createAuthor(any()))
+                .willReturn(new LibraryService.Created<>(new AuthorResponseDTO(7, "Brandon Sanderson"), true))
+                .willReturn(new LibraryService.Created<>(new AuthorResponseDTO(7, "Brandon Sanderson"), false));
+        String body = "{\"fullName\":\"brandon sanderson\"}";
+
+        assertThat(mvc.post().uri("/api/library/authors").contentType(MediaType.APPLICATION_JSON).content(body))
+                .hasStatus(201);
+        assertThat(mvc.post().uri("/api/library/authors").contentType(MediaType.APPLICATION_JSON).content(body))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.fullName")
+                .isEqualTo("Brandon Sanderson");
+    }
+
+    @Test
+    void getGoals_returnsGoals() {
+        given(libraryService.findAllGoals()).willReturn(List.of(new ReadingGoalResponseDTO(2026, 25)));
+
+        assertThat(mvc.get().uri("/api/library/goals"))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$[0].target")
+                .isEqualTo(25);
+    }
+
+    @Test
+    void setGoal_passesYearAndTarget() {
+        given(libraryService.setGoal(eq(2026), any())).willReturn(new ReadingGoalResponseDTO(2026, 25));
+
+        assertThat(mvc.put()
+                        .uri("/api/library/goals/2026")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":25}"))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.year")
+                .isEqualTo(2026);
+    }
+
+    @Test
+    void setGoal_rejectsZeroTargetAndOddYears() {
+        assertThat(mvc.put()
+                        .uri("/api/library/goals/2026")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":0}"))
+                .hasStatus(400);
+        assertThat(mvc.put()
+                        .uri("/api/library/goals/26")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":25}"))
+                .hasStatus(400);
+    }
+
+    @Test
+    void deleteGoal_is204() {
+        assertThat(mvc.delete().uri("/api/library/goals/2026")).hasStatus(204);
+
+        verify(libraryService).deleteGoal(2026);
     }
 }

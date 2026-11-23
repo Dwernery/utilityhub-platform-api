@@ -3,6 +3,8 @@ package com.utilityhub.api.controller;
 import java.util.List;
 import java.util.Map;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,11 +26,13 @@ import com.utilityhub.api.dto.request.AttachFileRequestDTO;
 import com.utilityhub.api.dto.request.AuthorCreateRequestDTO;
 import com.utilityhub.api.dto.request.BookCreateRequestDTO;
 import com.utilityhub.api.dto.request.BookUpdateRequestDTO;
+import com.utilityhub.api.dto.request.ReadingGoalRequestDTO;
 import com.utilityhub.api.dto.request.SeriesCreateRequestDTO;
 import com.utilityhub.api.dto.response.library.AttachFileResponseDTO;
 import com.utilityhub.api.dto.response.library.AuthorResponseDTO;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
 import com.utilityhub.api.dto.response.library.PresignedUrlResponseDTO;
+import com.utilityhub.api.dto.response.library.ReadingGoalResponseDTO;
 import com.utilityhub.api.dto.response.library.SeriesResponseDTO;
 import com.utilityhub.api.service.LibraryService;
 
@@ -87,10 +92,10 @@ public class LibraryController {
         return libraryService.findAllAuthors();
     }
 
+    /** 201 with the new author, or 200 with the existing one if the name (ignoring case) is taken. */
     @PostMapping("/authors")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AuthorResponseDTO createAuthor(@Valid @RequestBody AuthorCreateRequestDTO newAuthor) {
-        return libraryService.createAuthor(newAuthor);
+    public ResponseEntity<AuthorResponseDTO> createAuthor(@Valid @RequestBody AuthorCreateRequestDTO newAuthor) {
+        return created(libraryService.createAuthor(newAuthor));
     }
 
     @GetMapping("/series")
@@ -98,10 +103,33 @@ public class LibraryController {
         return libraryService.findAllSeries();
     }
 
+    /** 201 with the new series, or 200 with the existing one if the name (ignoring case) is taken. */
     @PostMapping("/series")
-    @ResponseStatus(HttpStatus.CREATED)
-    public SeriesResponseDTO createSeries(@Valid @RequestBody SeriesCreateRequestDTO newSeries) {
-        return libraryService.createSeries(newSeries);
+    public ResponseEntity<SeriesResponseDTO> createSeries(@Valid @RequestBody SeriesCreateRequestDTO newSeries) {
+        return created(libraryService.createSeries(newSeries));
+    }
+
+    @GetMapping("/goals")
+    public List<ReadingGoalResponseDTO> getGoals() {
+        return libraryService.findAllGoals();
+    }
+
+    /** Sets the number of books to finish in {@code year}, replacing any earlier goal. */
+    @PutMapping("/goals/{year}")
+    public ReadingGoalResponseDTO setGoal(
+            @PathVariable @Min(2000) @Max(2200) Integer year, @Valid @RequestBody ReadingGoalRequestDTO request) {
+        return libraryService.setGoal(year, request);
+    }
+
+    @DeleteMapping("/goals/{year}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteGoal(@PathVariable @Min(2000) @Max(2200) Integer year) {
+        libraryService.deleteGoal(year);
+    }
+
+    private static <T> ResponseEntity<T> created(LibraryService.Created<T> result) {
+        return ResponseEntity.status(result.isNew() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(result.value());
     }
 
     @GetMapping("/books/upload-url")

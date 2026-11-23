@@ -19,17 +19,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.utilityhub.api.db.entity.library.Author;
 import com.utilityhub.api.db.entity.library.Book;
+import com.utilityhub.api.db.entity.library.ReadingGoal;
 import com.utilityhub.api.db.entity.library.Series;
 import com.utilityhub.api.db.repository.library.AuthorRepository;
 import com.utilityhub.api.db.repository.library.BookRepository;
+import com.utilityhub.api.db.repository.library.ReadingGoalRepository;
 import com.utilityhub.api.db.repository.library.SeriesRepository;
 import com.utilityhub.api.dto.request.AttachFileRequestDTO;
 import com.utilityhub.api.dto.request.AuthorCreateRequestDTO;
 import com.utilityhub.api.dto.request.BookCreateRequestDTO;
 import com.utilityhub.api.dto.request.BookUpdateRequestDTO;
+import com.utilityhub.api.dto.request.ReadingGoalRequestDTO;
 import com.utilityhub.api.dto.request.SeriesCreateRequestDTO;
 import com.utilityhub.api.dto.response.library.AuthorResponseDTO;
 import com.utilityhub.api.dto.response.library.BookResponseDTO;
+import com.utilityhub.api.dto.response.library.ReadingGoalResponseDTO;
 import com.utilityhub.api.dto.response.library.SeriesResponseDTO;
 import com.utilityhub.api.exception.InvalidRequestException;
 import com.utilityhub.api.exception.ResourceNotFoundException;
@@ -51,6 +55,7 @@ public class LibraryService {
     private final BookRepository bookRepository;
     private final AuthorRepository authorRepository;
     private final SeriesRepository seriesRepository;
+    private final ReadingGoalRepository readingGoalRepository;
     private final S3Service s3Service;
     private final JsonMapper jsonMapper;
     private final Validator validator;
@@ -59,12 +64,14 @@ public class LibraryService {
             BookRepository bookRepository,
             AuthorRepository authorRepository,
             SeriesRepository seriesRepository,
+            ReadingGoalRepository readingGoalRepository,
             S3Service s3Service,
             JsonMapper jsonMapper,
             Validator validator) {
         this.bookRepository = bookRepository;
         this.authorRepository = authorRepository;
         this.seriesRepository = seriesRepository;
+        this.readingGoalRepository = readingGoalRepository;
         this.s3Service = s3Service;
         this.jsonMapper = jsonMapper;
         this.validator = validator;
@@ -76,32 +83,74 @@ public class LibraryService {
 
     public List<AuthorResponseDTO> findAllAuthors() {
         return authorRepository.findAll().stream()
-                .map(author -> new AuthorResponseDTO(author.getId(), author.getFullName()))
+                .map(LibraryService::toResponse)
                 .toList();
     }
 
     public List<SeriesResponseDTO> findAllSeries() {
         return seriesRepository.findAll().stream()
-                .map(series -> new SeriesResponseDTO(series.getId(), series.getName()))
+                .map(LibraryService::toResponse)
                 .toList();
     }
 
+    /** What a create returned, and whether it was new (201) or an existing match (200). */
+    public record Created<T>(T value, boolean isNew) {}
+
+    /**
+     * Adds an author, unless one with the same name (ignoring case and surrounding spaces)
+     * exists: then that one is returned, so "brandon sanderson" can't split an author in two.
+     */
     @Transactional
-    public AuthorResponseDTO createAuthor(AuthorCreateRequestDTO newAuthor) {
+    public Created<AuthorResponseDTO> createAuthor(AuthorCreateRequestDTO newAuthor) {
+        String name = newAuthor.fullName().trim();
+        var existing = authorRepository.findFirstByFullNameIgnoreCaseOrderByIdAsc(name);
+        if (existing.isPresent()) {
+            return new Created<>(toResponse(existing.get()), false);
+        }
         Author author = new Author();
-        author.setFullName(newAuthor.fullName().trim());
+        author.setFullName(name);
         Author saved = authorRepository.save(author);
         log.info("Created author id={}", saved.getId());
-        return new AuthorResponseDTO(saved.getId(), saved.getFullName());
+        return new Created<>(toResponse(saved), true);
     }
 
+    /** Adds a series, or returns the existing one with the same name (see {@link #createAuthor}). */
     @Transactional
-    public SeriesResponseDTO createSeries(SeriesCreateRequestDTO newSeries) {
+    public Created<SeriesResponseDTO> createSeries(SeriesCreateRequestDTO newSeries) {
+        String name = newSeries.name().trim();
+        var existing = seriesRepository.findFirstByNameIgnoreCaseOrderByIdAsc(name);
+        if (existing.isPresent()) {
+            return new Created<>(toResponse(existing.get()), false);
+        }
         Series series = new Series();
-        series.setName(newSeries.name().trim());
+        series.setName(name);
         Series saved = seriesRepository.save(series);
         log.info("Created series id={}", saved.getId());
-        return new SeriesResponseDTO(saved.getId(), saved.getName());
+        return new Created<>(toResponse(saved), true);
+    }
+
+    public List<ReadingGoalResponseDTO> findAllGoals() {
+        return readingGoalRepository.findAllByOrderByYearAsc().stream()
+                .map(goal -> new ReadingGoalResponseDTO(goal.getYear(), goal.getTarget()))
+                .toList();
+    }
+
+    /** Sets (or replaces) the number of books to finish in {@code year}. */
+    @Transactional
+    public ReadingGoalResponseDTO setGoal(int year, ReadingGoalRequestDTO request) {
+        ReadingGoal goal = readingGoalRepository.findById(year).orElseGet(ReadingGoal::new);
+        goal.setYear(year);
+        goal.setTarget(request.target());
+        ReadingGoal saved = readingGoalRepository.save(goal);
+        log.info("Set reading goal year={} target={}", year, saved.getTarget());
+        return new ReadingGoalResponseDTO(saved.getYear(), saved.getTarget());
+    }
+
+    /** Removes the goal for {@code year}; nothing happens if there is none. */
+    @Transactional
+    public void deleteGoal(int year) {
+        readingGoalRepository.deleteById(year);
+        log.info("Deleted reading goal year={}", year);
     }
 
     @Transactional
@@ -194,7 +243,9 @@ public class LibraryService {
     }
 
     private Author findAuthor(String name) {
-        return authorRepository.findByFullName(name).orElseThrow(() -> new ResourceNotFoundException("Author", name));
+        return authorRepository
+                .findFirstByFullNameIgnoreCaseOrderByIdAsc(name.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Author", name));
     }
 
     /** A blank series name means "no series". */
@@ -202,7 +253,17 @@ public class LibraryService {
         if (name == null || name.isBlank()) {
             return null;
         }
-        return seriesRepository.findByName(name).orElseThrow(() -> new ResourceNotFoundException("Series", name));
+        return seriesRepository
+                .findFirstByNameIgnoreCaseOrderByIdAsc(name.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Series", name));
+    }
+
+    private static AuthorResponseDTO toResponse(Author author) {
+        return new AuthorResponseDTO(author.getId(), author.getFullName());
+    }
+
+    private static SeriesResponseDTO toResponse(Series series) {
+        return new SeriesResponseDTO(series.getId(), series.getName());
     }
 
     private static BookResponseDTO toResponse(Book book) {

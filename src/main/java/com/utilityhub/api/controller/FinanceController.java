@@ -18,11 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.utilityhub.api.dto.request.AccountBalanceUpdateRequestDTO;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
+import com.utilityhub.api.dto.request.AccountUpdateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionCreateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
+import com.utilityhub.api.dto.response.finance.BalanceCopyResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
@@ -59,6 +61,16 @@ public class FinanceController {
         return financeService.createAccount(request);
     }
 
+    /**
+     * Replaces an account's name, type and archived flag. The type must stay
+     * in the account's category (400 otherwise).
+     */
+    @PutMapping("/accounts/{accountId}")
+    public AccountResponseDTO updateAccount(
+            @PathVariable Integer accountId, @Valid @RequestBody AccountUpdateRequestDTO request) {
+        return financeService.updateAccount(accountId, request);
+    }
+
     /** Creates the balance if it doesn't exist, replaces it if it does. */
     @PutMapping("/accounts/{accountId}/balances/{balanceDate}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -75,6 +87,16 @@ public class FinanceController {
             @PathVariable Integer accountId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate balanceDate) {
         financeService.deleteAccountBalance(accountId, balanceDate);
+    }
+
+    /**
+     * Fills a month from the one before it (accounts already in the month are
+     * kept). The date must be the first of a month.
+     */
+    @PostMapping("/balances/{balanceDate}/copy-previous-month")
+    public BalanceCopyResponseDTO copyPreviousMonthBalances(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate balanceDate) {
+        return financeService.copyPreviousMonthBalances(balanceDate);
     }
 
     // --- Transactions ---

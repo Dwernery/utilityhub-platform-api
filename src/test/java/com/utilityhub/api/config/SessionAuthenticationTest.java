@@ -86,7 +86,7 @@ class SessionAuthenticationTest {
     @Test
     void bearerToken_reachesTheController() {
         given(financeService.getAllAccounts())
-                .willReturn(List.of(new AccountResponseDTO(1, "Checking", "Bank", "ASSET")));
+                .willReturn(List.of(new AccountResponseDTO(1, "Checking", "Bank", "ASSET", false)));
 
         assertThat(mvc.get().uri(ACCOUNTS).header(HttpHeaders.AUTHORIZATION, bearer(validToken())))
                 .hasStatusOk()
@@ -225,7 +225,7 @@ class SessionAuthenticationTest {
 
     @Test
     void cookieWriteFromThisSite_isAllowed() {
-        given(financeService.createAccount(any())).willReturn(new AccountResponseDTO(7, "X", "Bank", "ASSET"));
+        given(financeService.createAccount(any())).willReturn(new AccountResponseDTO(7, "X", "Bank", "ASSET", false));
 
         assertThat(mvc.post()
                         .uri(ACCOUNTS)

@@ -2,8 +2,10 @@ package com.utilityhub.api.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,12 +29,14 @@ import com.utilityhub.api.db.repository.finance.IncomeSourceRepository;
 import com.utilityhub.api.db.repository.finance.NetWorthSnapshotRepository;
 import com.utilityhub.api.db.repository.finance.TransactionRepository;
 import com.utilityhub.api.dto.request.AccountCreateRequestDTO;
+import com.utilityhub.api.dto.request.AccountUpdateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceCreateRequestDTO;
 import com.utilityhub.api.dto.request.IncomeSourceUpdateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionCreateRequestDTO;
 import com.utilityhub.api.dto.request.TransactionUpdateRequestDTO;
 import com.utilityhub.api.dto.response.finance.AccountBalanceResponseDTO;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
+import com.utilityhub.api.dto.response.finance.BalanceCopyResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.NetWorthHistoryResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
@@ -128,6 +132,32 @@ public class FinanceService {
         log.info("Saved balance for accountId={}, balanceDate={}", accountId, balanceDate);
     }
 
+    /**
+     * Starts a month from the one before it: every account balance from the
+     * previous month is copied into {@code balanceDate}, except for accounts
+     * that already have a balance there (those are kept as entered) and
+     * archived accounts (no longer carried forward).
+     */
+    @Transactional
+    public BalanceCopyResponseDTO copyPreviousMonthBalances(LocalDate balanceDate) {
+        // Balances are stored on the 1st. Any other day would also make
+        // minusMonths ambiguous (Mar 31 minus a month is Feb 28).
+        if (balanceDate.getDayOfMonth() != 1) {
+            throw new InvalidRequestException(
+                    "balanceDate must be the first day of a month, e.g. " + balanceDate.withDayOfMonth(1));
+        }
+        LocalDate fromDate = balanceDate.minusMonths(1);
+        if (!accountMonthlyBalanceRepository.existsActiveBalanceOn(fromDate)) {
+            throw new InvalidRequestException(
+                    "No active account balances for " + MONTH_YEAR.format(fromDate) + " to copy");
+        }
+        int copied = accountMonthlyBalanceRepository.copyBalances(fromDate, balanceDate);
+        log.info("Copied {} balances from {} to {}", copied, fromDate, balanceDate);
+        return new BalanceCopyResponseDTO(fromDate, balanceDate, copied);
+    }
+
+    private static final DateTimeFormatter MONTH_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US);
+
     public List<TransactionResponseDTO> getAllTransactions() {
         return transactionRepository.findAll(Sort.by(Sort.Order.desc("amount"), Sort.Order.asc("id"))).stream()
                 .map(FinanceService::toTransactionDTO)
@@ -136,12 +166,56 @@ public class FinanceService {
 
     public List<AccountResponseDTO> getAllAccounts() {
         return accountRepository.findAll().stream()
-                .map(account -> new AccountResponseDTO(
-                        account.getId(),
-                        account.getName(),
-                        account.getAccountType().getName(),
-                        account.getAccountType().getCategory().toString()))
+                .map(FinanceService::toAccountDTO)
                 .toList();
+    }
+
+    private static AccountResponseDTO toAccountDTO(Account account) {
+        return new AccountResponseDTO(
+                account.getId(),
+                account.getName(),
+                account.getAccountType().getName(),
+                account.getAccountType().getCategory().toString(),
+                account.isArchived());
+    }
+
+    /** The type with this name, created in {@code category} if it's new. */
+    private AccountType findOrCreateType(String name, AccountCategory category) {
+        return accountTypeRepository
+                .findByName(name)
+                .map(existing -> requireSameCategory(existing, category))
+                .orElseGet(() -> {
+                    log.debug("Creating account type '{}' ({})", name, category);
+                    AccountType newAccountType = new AccountType();
+                    newAccountType.setName(name);
+                    newAccountType.setCategory(category);
+                    return accountTypeRepository.save(newAccountType);
+                });
+    }
+
+    /**
+     * Renames, retypes or (un)archives an account. The category stays: the new
+     * type must be one of the account's category, or a new name (created in it).
+     * Name and type show in every month, so a rename applies to past months too;
+     * balances and net worth don't change. Archiving keeps every balance.
+     */
+    @Transactional
+    public AccountResponseDTO updateAccount(Integer accountId, AccountUpdateRequestDTO request) {
+        Account account = accountRepository
+                .findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
+        AccountCategory category = account.getAccountType().getCategory();
+
+        account.setName(request.accountName().trim());
+        account.setAccountType(findOrCreateType(request.accountType().trim(), category));
+        account.setArchived(request.archived());
+        Account saved = accountRepository.save(account);
+        log.info(
+                "Updated account id={} (type '{}', archived={})",
+                saved.getId(),
+                saved.getAccountType().getName(),
+                saved.isArchived());
+        return toAccountDTO(saved);
     }
 
     /**
@@ -153,16 +227,7 @@ public class FinanceService {
     public AccountResponseDTO createAccount(AccountCreateRequestDTO request) {
         AccountCategory category = request.category();
 
-        AccountType accountType = accountTypeRepository
-                .findByName(request.accountType())
-                .map(existing -> requireSameCategory(existing, category))
-                .orElseGet(() -> {
-                    log.debug("Creating account type '{}' ({})", request.accountType(), category);
-                    AccountType newAccountType = new AccountType();
-                    newAccountType.setName(request.accountType());
-                    newAccountType.setCategory(category);
-                    return accountTypeRepository.save(newAccountType);
-                });
+        AccountType accountType = findOrCreateType(request.accountType(), category);
 
         Account account = new Account();
         account.setName(request.accountName());
@@ -183,11 +248,7 @@ public class FinanceService {
                 accountType.getName(),
                 request.balanceDate() != null ? request.balanceDate() : "none");
 
-        return new AccountResponseDTO(
-                savedAccount.getId(),
-                savedAccount.getName(),
-                savedAccount.getAccountType().getName(),
-                savedAccount.getAccountType().getCategory().toString());
+        return toAccountDTO(savedAccount);
     }
 
     /** Type names are unique, so "Mortgage" can't be both a LIABILITY and an ASSET. */
@@ -232,6 +293,9 @@ public class FinanceService {
         transaction.setName(request.name().trim());
         transaction.setAmount(request.amount());
         transaction.setPaid(request.paid());
+        if (request.cash() != null) {
+            transaction.setCash(request.cash());
+        }
 
         Transaction saved = transactionRepository.save(transaction);
         log.info("Updated transaction id={}", id);

@@ -14,8 +14,10 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 import com.utilityhub.api.db.entity.finance.TransactionType;
 import com.utilityhub.api.dto.response.finance.AccountResponseDTO;
+import com.utilityhub.api.dto.response.finance.BalanceCopyResponseDTO;
 import com.utilityhub.api.dto.response.finance.IncomeSourceResponseDTO;
 import com.utilityhub.api.dto.response.finance.TransactionResponseDTO;
+import com.utilityhub.api.exception.InvalidRequestException;
 import com.utilityhub.api.service.FinanceService;
 import com.utilityhub.api.support.WithSession;
 
@@ -39,7 +41,7 @@ class FinanceControllerTest {
     @Test
     void getAllAccounts_returnsAccountsFromService() {
         given(financeService.getAllAccounts())
-                .willReturn(List.of(new AccountResponseDTO(1, "Checking", "Bank", "ASSET")));
+                .willReturn(List.of(new AccountResponseDTO(1, "Checking", "Bank", "ASSET", false)));
 
         assertThat(mvc.get().uri("/api/finance/accounts"))
                 .hasStatusOk()
@@ -50,7 +52,8 @@ class FinanceControllerTest {
 
     @Test
     void createAccount_returnsCreatedAccount() {
-        given(financeService.createAccount(any())).willReturn(new AccountResponseDTO(7, "Checking", "Bank", "ASSET"));
+        given(financeService.createAccount(any()))
+                .willReturn(new AccountResponseDTO(7, "Checking", "Bank", "ASSET", false));
 
         assertThat(mvc.post()
                         .uri("/api/finance/accounts")
@@ -129,6 +132,34 @@ class FinanceControllerTest {
     }
 
     @Test
+    void updateTransaction_passesCashThroughAndLeavesItNullWhenMissing() {
+        given(financeService.editTransaction(eq(5), any()))
+                .willReturn(new TransactionResponseDTO(
+                        5, "Rent", TransactionType.EXPENSE, new BigDecimal("1500"), false, true));
+
+        assertThat(mvc.put()
+                        .uri("/api/finance/transactions/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"name":"Rent","amount":1500,"paid":false,"cash":true}
+                        """))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.cash")
+                .isEqualTo(true);
+        verify(financeService).editTransaction(eq(5), argThat(r -> Boolean.TRUE.equals(r.cash())));
+
+        assertThat(mvc.put()
+                        .uri("/api/finance/transactions/6")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"name":"Rent","amount":1500,"paid":false}
+                        """))
+                .hasStatusOk();
+        verify(financeService).editTransaction(eq(6), argThat(r -> r.cash() == null));
+    }
+
+    @Test
     void putAccountBalance_parsesDateFromPathAndReturnsNoContent() {
         assertThat(mvc.put()
                         .uri("/api/finance/accounts/3/balances/2026-11-01")
@@ -145,6 +176,83 @@ class FinanceControllerTest {
                 .hasStatus(204);
 
         verify(financeService).deleteAccountBalance(3, LocalDate.of(2026, 11, 1));
+    }
+
+    @Test
+    void updateAccount_returnsTheUpdatedAccount() {
+        given(financeService.updateAccount(eq(5), any()))
+                .willReturn(new AccountResponseDTO(5, "Brokerage", "Investments", "ASSET", true));
+
+        assertThat(mvc.put()
+                        .uri("/api/finance/accounts/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"accountName":"Brokerage","accountType":"Investments","archived":true}
+                        """))
+                .hasStatusOk()
+                .bodyJson()
+                .extractingPath("$.archived")
+                .isEqualTo(true);
+
+        verify(financeService)
+                .updateAccount(
+                        eq(5), argThat(r -> r.archived() && r.accountName().equals("Brokerage")));
+    }
+
+    @Test
+    void updateAccount_requiresArchived() {
+        // A missing flag must not silently unarchive the account.
+        assertThat(mvc.put()
+                        .uri("/api/finance/accounts/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"accountName":"Brokerage","accountType":"Investments"}
+                        """))
+                .hasStatus(400);
+    }
+
+    @Test
+    void updateAccount_aTypeFromTheOtherCategoryIsABadRequest() {
+        given(financeService.updateAccount(eq(5), any()))
+                .willThrow(new InvalidRequestException("Account type 'Mortgage' already exists as LIABILITY"));
+
+        assertThat(mvc.put()
+                        .uri("/api/finance/accounts/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"accountName":"Checking","accountType":"Mortgage","archived":false}
+                        """))
+                .hasStatus(400);
+    }
+
+    @Test
+    void copyPreviousMonthBalances_returnsWhatWasCopied() {
+        given(financeService.copyPreviousMonthBalances(LocalDate.of(2026, 11, 1)))
+                .willReturn(new BalanceCopyResponseDTO(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 1), 7));
+
+        var result = assertThat(mvc.post().uri("/api/finance/balances/2026-11-01/copy-previous-month"))
+                .hasStatusOk()
+                .bodyJson();
+        result.extractingPath("$.copied").isEqualTo(7);
+        result.extractingPath("$.fromDate").isEqualTo("2026-10-01");
+    }
+
+    @Test
+    void copyPreviousMonthBalances_nothingToCopyIsABadRequestWithTheReason() {
+        given(financeService.copyPreviousMonthBalances(any()))
+                .willThrow(new InvalidRequestException("No active account balances for October 2026 to copy"));
+
+        assertThat(mvc.post().uri("/api/finance/balances/2026-11-01/copy-previous-month"))
+                .hasStatus(400)
+                .bodyJson()
+                .extractingPath("$.detail")
+                .isEqualTo("No active account balances for October 2026 to copy");
+    }
+
+    @Test
+    void copyPreviousMonthBalances_rejectsAMalformedDate() {
+        assertThat(mvc.post().uri("/api/finance/balances/november/copy-previous-month"))
+                .hasStatus(400);
     }
 
     @Test

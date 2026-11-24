@@ -50,4 +50,29 @@ public interface AccountMonthlyBalanceRepository extends JpaRepository<AccountMo
             @Param("accountId") Integer accountId,
             @Param("balanceDate") LocalDate balanceDate,
             @Param("balance") BigDecimal balance);
+
+    /** Whether any account that isn't archived has a balance on this date (something a copy would bring forward). */
+    @Query("""
+            SELECT count(amb) > 0 FROM AccountMonthlyBalance amb
+            WHERE amb.balanceDate = :balanceDate AND amb.account.archived = false
+            """)
+    boolean existsActiveBalanceOn(@Param("balanceDate") LocalDate balanceDate);
+
+    /**
+     * Copies every balance dated {@code fromDate} to {@code toDate} in one
+     * statement, so it all happens or none of it does. ON CONFLICT DO NOTHING
+     * skips accounts that already have a {@code toDate} balance: a copy never
+     * overwrites what was entered by hand. Archived accounts aren't carried
+     * forward. Returns the number of rows created.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query(nativeQuery = true, value = """
+            INSERT INTO account_monthly_balances (account_id, balance_date, balance)
+            SELECT b.account_id, :toDate, b.balance
+            FROM account_monthly_balances b
+            JOIN accounts a ON a.id = b.account_id
+            WHERE b.balance_date = :fromDate AND NOT a.archived
+            ON CONFLICT (account_id, balance_date) DO NOTHING
+            """)
+    int copyBalances(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 }

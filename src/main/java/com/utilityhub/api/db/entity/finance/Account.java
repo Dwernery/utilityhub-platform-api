@@ -27,6 +27,13 @@ public class Account {
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 
+    /**
+     * Archived accounts keep all their balances (history is unchanged) but are
+     * no longer offered for new months. See db/2026-11-23-finance-account-archived.sql.
+     */
+    @Column(name = "archived", nullable = false)
+    private boolean archived;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_type_id", nullable = false)
     private AccountType accountType;
